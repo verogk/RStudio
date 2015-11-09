@@ -1,0 +1,706 @@
+#### Levanto la data #### 
+
+setwd("/home/despegar/rstudio_data/vseminario/Elasticidad Hoteles/AR")
+
+data <- rbind(Agosto, Septiembre, Octubre)
+data <- as.data.frame(data)
+
+# me quedo solo con estos flows (detail, search, thanks, check out)
+#table(data$fl)
+data <- subset(data, fl =="detail" | fl =="search" | fl =="checkout" | fl =="thanks")
+
+data$userid <- as.character(data$userid)
+# nchar(data[1:10,]$userid) da 36
+data <- subset(data, nchar(userid) == 36)
+
+#### AB.TAG ####
+#lo primero que hago es armar una tablita que me diga el tag que recibio cada usuario, para un futuro merge
+# cambio userids a character. Si quedan como factors, cuando haga tables van a incluir
+# todos los user id de tablas anteriores, con frecuencia = 0
+details <- subset(data, fl =="detail")
+details <- details[!duplicated(details$userid),]
+details <- details[order(details$datetime, decreasing = TRUE ),]
+details <- details[,c("userid","ab")]
+details <- subset(details, nchar(userid) == 36)
+details<- data.table(details)
+details <- as.data.frame(details)
+
+details <- details[1:10000,]
+
+library(data.table)
+dataNA<- subset(details, regexpr("D-rm-h-elasticity2\\|v_NOT-APPLY", details$ab) > 0) # incluye a "D-rm-h-elasticity2"
+data0<- subset(details, regexpr("D-rm-h-elasticity2\\|v_0", details$ab) > 0) # incluye a "D-rm-h-elasticity2"
+data2<- subset(details, regexpr("D-rm-h-elasticity2\\|v_2", details$ab) > 0)
+data4b<- subset(details, regexpr("D-rm-h-elasticity\\|v_4", details$ab) > 0)
+data6<- subset(details, regexpr("D-rm-h-elasticity2\\|v_6", details$ab) > 0)
+
+dataNA$abtest <- "Not Apply"
+data0$abtest <- 0
+data2$abtest <- 2
+data4$abtest <- 4
+data6$abtest <- 6
+
+dataNA$ab <- NULL
+data0$ab <- NULL
+data2$ab <- NULL
+data4$ab <- NULL
+data6$ab <- NULL
+
+dataNA <- as.data.frame(unique(ab.tag))
+
+# ahora me quedo con los usuarios unicos y con su tag de ab test. 
+# luego se hara un merge para que ese tag quede en todas las acciones de un mismo usuario en el sitio.
+ab.tag <- rbind(data0,data2,data4,data6)
+
+ab.tag <- subset(ab.tag, select=c("userid","abtest"))
+ab.tag <- as.data.frame(unique(ab.tag))
+
+# SON 65,886 usuarios unicos con tag (excluye not applys) segun esta tabla, para AR
+# SON 608,888 usuarios unicos con tag segun esta tabla, para MX
+# SON 341,340 usuarios unicos segun esta tabla, para PE y CL
+
+#me quedo esta tablita ab.test para llenar el campo abtest al final en la tabla all
+rm(data0,data2,data4,data6,details)
+# me guardo a los NOT APPLYS ya que luego los uso para exlcuir a los users a los que en algun momento les toco Not Apply
+
+
+#### Preparacion de DATA ####
+# Grepeo que valores son numericos 
+num.vars <- which(sapply(data[1:10000,], function(x) any(grepl("^[0-9]+$",x))))
+excl <- which(names(data) %in% c("di", "dc")) # esta tomando algunos codigos de IATA numericos y convirtiendo toda la variable en numerica
+num.vars <- setdiff(num.vars, excl)
+
+for(i in num.vars){
+  data[,i] <- as.numeric(as.character(data[,i]))
+}
+
+# limpio el workspace
+rm(excl, i, num.vars)
+
+data<- data.table(data)
+
+library("stringr")
+
+#Fechas a formato fecha
+data$fecha_ci <- as.Date(strptime(data$ci, "%Y-%m-%d"))
+data$fecha_co <- as.Date(strptime(data$co, "%Y-%m-%d"))
+
+data$ci <- NULL
+data$co <- NULL
+
+# timestamp de la reserva
+# data$fecha_reserva <- as.Date(as.POSIXct(data$datetime/1000, origin="1970-01-01",tz="GMT"))
+data$fecha_reserva <- as.POSIXct(data$datetime/1000, origin="1970-01-01",tz="GMT")
+
+# Separo compradores de no compradores #
+#### BUYERS ####
+# (los que compraron)
+# Solo quiero las acciones de cada usuario cuyo timestamp sea menor al del thanks
+# Pasos a seguir:
+# 0. ordenar de mas reciente a mas antiguo asi me quedo con el thanks mas reciente
+# 1. buscar el timestamp del thanks
+# 2. poner ese timestamp en una columna aparte matcheando con ese user, con un merge
+# 3. subsetear data quedandome solo con acciones donde el timestamp de la accion sea menor 
+#    o igual al de la columna del timestamp fijo del thanks
+# 4. contar los detail y search 
+data.merge <- as.data.table(data)
+# me quiero quedar con las acciones mas recientes. por eso ordeno y luego saco userid duplicados
+data.merge <- data.merge[order(data.merge$fecha_reserva, decreasing = TRUE ),]
+
+data.th <- subset(data.merge, fl =="thanks")
+data.th <- data.th[!duplicated(data.th[,userid]),]
+setnames(data.th, "fecha_reserva", "fecha_thanks") # aca cambie el nombre de la columna para no confundirme en el merge
+data.merge <- as.data.frame(data.merge)
+data.th <- as.data.frame(data.th)
+# este merge es para agregar la fecha de compra mas reciente a cada userid
+buyers <- merge(data.merge, data.th[,c("userid","fecha_thanks")], by="userid")
+# si le saco el all.x=T al merge anterior esto es innecesario buyers <- subset(buyers, !is.na(buyers$fecha_thanks))
+
+#me quedo solo con las acciones previas al thanks mas reciente
+buyers$va <- ifelse(buyers$fecha_thanks >= buyers$fecha_reserva, 1, 0) 
+buyers <- subset(buyers, va == 1) 
+
+buyers$va <- NULL
+buyers$fecha_thanks <- NULL
+
+rm(data.th)
+
+# ahora me quedo con la tabla buyers que tiene las acciones de los compradores. 
+# tengo que contar los check outs details, searches previos a las compras
+buyers.co <- subset(buyers, fl =="checkout")
+buyers.co$userid <- as.character(buyers.co$userid) 
+cant.co <- table(buyers.co$userid)
+cant.co <-as.data.frame(cant.co)
+colnames(cant.co)<-c("userid","checkout.count")
+buyers <- merge(buyers, cant.co[,c("userid","checkout.count")], by.x="userid", by="userid", all.x=T)
+
+buyers.de <- subset(buyers, fl =="detail")
+cant.de <- table(buyers.de$userid) 
+cant.de <-as.data.frame(cant.de)
+colnames(cant.de) <- c("userid","detail.count")
+buyers <- merge(buyers, cant.de[,c("userid","detail.count")], by.x="userid", by="userid", all.x=T)
+
+buyers.se <- subset(buyers, fl =="search")
+buyers.se$userid <- as.character(buyers.se$userid) 
+cant.se <- table(buyers.se$userid)
+cant.se <-as.data.frame(cant.se)
+colnames(cant.se)<-c("userid","search.count")
+buyers <- merge(buyers, cant.se[,c("userid","search.count")], by.x="userid", by="userid", all.x=T)
+
+buyers.tx <- subset(buyers, fl =="thanks")
+buyers.tx$userid <- as.character(buyers.tx$userid) 
+cant.tx <- table(buyers.tx$userid)
+cant.tx <-as.data.frame(cant.tx)
+colnames(cant.tx)<-c("userid","thanks.count")
+buyers <- merge(buyers, cant.tx[,c("userid","thanks.count")], by.x="userid", by="userid", all.x=T)
+
+rm(cant.tx, cant.se, cant.de, cant.co, buyers.se, buyers.de, buyers.co, buyers.tx)
+
+# algunos buyers tienen mas de una compra. voy a dividir (y redondear a nro entero) 
+# la cant. de se, co y de por la cantidad de tx. 
+
+buyers$checkout.count <- round((buyers$checkout.count/buyers$thanks.count), digits=0)
+buyers$detail.count <- round((buyers$detail.count/buyers$thanks.count), digits=0)
+buyers$search.count <- round((buyers$search.count/buyers$thanks.count), digits=0)
+
+# finalmente, me quedo solo con la fila del thanks de cada usuario en la tabla buyers
+# ya que es la fila que tiene la info del hotel comprado
+buyers <- subset(buyers, fl =="thanks")
+
+# algunos usuarios tenian mas de una compra. me quedo con la mas reciente
+buyers <- buyers[order(buyers$fecha_reserva, decreasing = TRUE ),]
+buyers <- subset(buyers, !duplicated(buyers$userid)) 
+
+# por ultimo le agrego una columna que los etiquete como compradores con 1
+buyers$compro <- 1
+
+save(buyers,file="Buyers DataAR.Rda")
+save(buyers,file="Buyers DataAR.Rda")
+
+
+##### CHECKERS ####
+# (los que abandonaron la busqueda antes de comprar)
+# Como no compraron, tomo todas las acciones del usuario en estos dias
+# (podrian haber comprado mas adelante y no lo se)
+# Me voy a quedar con la info del detail mas reciente que vieron. 
+# Si no hay detail, quiero el search mas reciente
+# Pasos a seguir:
+# 1. armo una tabla de checkers con los que no registraron una compra
+# 2. contar los detail y searches de cada userid
+# 3. dejar el search, checkout y detail mas reciente de cada usuario
+# 4. hacer un rbind de checkout, detail y search EN ESE ORDEN 
+# 5. quedarme con los uniques asi tengo el flow mas profundo mas reciente de cada usuario
+
+checkers <- subset(data.merge, !data.merge$userid %in% buyers$userid)
+
+checkers$userid <- as.character(checkers$userid) 
+checkers.co <- subset(checkers, fl =="checkout")
+cant.co <- table(checkers.co$userid)
+cant.co <-as.data.frame(cant.co)
+colnames(cant.co)<-c("userid","checkout.count")
+cant.co$userid <- as.character(cant.co$userid) # CLAVE porque el table lo deja como factor y me llena de NAs en el paso del merge
+
+checkers$userid <- as.character(checkers$userid) 
+checkers.de <- subset(checkers, fl =="detail")
+cant.de <- table(checkers.de$userid) 
+cant.de <-as.data.frame(cant.de)
+colnames(cant.de) <- c("userid","detail.count")
+cant.de$userid <- as.character(cant.de$userid) # CLAVE porque el table lo deja como factor y me llena de NAs en el paso del merge
+
+#armo esta tablita que va contando acciones
+cantidades <- merge(cant.co[,c("userid","checkout.count")], cant.de[,c("userid","detail.count")], by="userid", all.x=T, all.y=T)
+
+checkers$userid <- as.character(checkers$userid) 
+checkers.se <- subset(checkers, fl =="search")
+cant.se <- table(checkers.se$userid)
+cant.se <-as.data.frame(cant.se)
+colnames(cant.se)<-c("userid","search.count")
+cant.se$userid <- as.character(cant.se$userid) # CLAVE porque el table lo deja como factor y me llena de NAs en el paso del merge
+
+cantidades <- merge(cantidades, cant.se[,c("userid","search.count")], by="userid", all.x=T, all.y=T)
+
+checkers <- merge(checkers, cantidades, by="userid", all.x=T)
+
+rm(checkers.se, checkers.de, checkers.co, cant.se, cant.de, cant.co)
+
+# voy a ordenar por timestamp y sacar las filas donde los ci y co date estan NA
+# esto porque me voy a quedar con la fila mas reciente de cada uno,
+# y si justo es una NA me quedo con pocos datos para estimar despues
+# de 32,688,707 obs de checkers, 2,450,915 tienen "NA" en fecha de ci y de co
+checkers <- checkers[order(checkers$fecha_reserva, decreasing = TRUE ),]
+
+checkers <- subset(checkers, !is.na(checkers$fecha_ci))
+
+checkers.co <- subset(checkers, fl =="checkout")
+checkers.co <- subset(checkers.co, !duplicated(checkers.co$userid)) 
+checkers.de <- subset(checkers, fl =="detail")
+checkers.de <- subset(checkers.de, !duplicated(checkers.de$userid)) 
+checkers.se <- subset(checkers, fl =="search")
+checkers.se <- subset(checkers.se, !duplicated(checkers.se$userid)) 
+
+# hago rbind en ese orden (1ero co, 2do de, 3ero se) y despues saco duplicados 
+# asi 1ero queda el flow mas profundo y de los flows más profundos, el más reciente.
+checkers <- rbind(checkers.co, checkers.de, checkers.se)
+checkers <- subset(checkers, !duplicated(checkers$userid)) 
+
+rm(checkers.se, checkers.co, checkers.de)
+
+checkers$thanks.count <- 0 # para que tenga los mismos campos que la tabla buyers
+
+# ahora me quedó una tabla con la accion de flujo mas profundo y mas reciente de cada user
+# los flujos son check out o detail. No hay gente cuyo ultima accion haya sido thanks
+# tiene sentido porque el brazo del test se asigna en detail. 
+# quienes no llegaron a detail no son parte del experimento
+
+# por ultimo le agrego una columna que los etiquete como no-compradores con 0
+checkers$compro <- 0
+
+save(checkers,file="Checkers DataAR.Rda")
+
+
+#### UNO BUY Y CHECK ####
+all <- rbind(buyers, checkers)
+
+all <- as.data.frame(all)
+
+all$detail.count <- ifelse(is.na(all$detail.count),0,all$detail.count)
+all$search.count <- ifelse(is.na(all$search.count),0,all$search.count)
+all$checkout.count <- ifelse(is.na(all$checkout.count),all$thanks.count,all$checkout.count)
+
+all <- subset(all, fl =="detail" |fl =="checkout" | fl =="thanks")
+
+#### agrego campo abtest #### 
+# Hago un merge para llenar el campo abtest en todas las filas,
+# sin aclarar all.x=T, es decir, no quiero quedarme con los usuarios 
+# que no tienen identificable el brazo del test
+
+### pero podria llenar ese campo mas adelante en la tabla all
+# En AR de casi 3M obs, me quedo solo con 1,297,013, que son los que llegaron a detail y recibieron tag y no son NOT APPLY
+all <- merge(all, ab.tag, by="userid")
+all$ab <- NULL
+all$datetime <- NULL
+
+# mobile. el campo mobile murio porque si navego desde mobile no se le asigno brazo para el test
+# entonces quedan todos los que usaron desktop cuando hago merge con la tabla que asigna brazo. 
+
+#### CARACT. DEL VIAJE ####
+
+# duracion del viaje
+all$duracion <- round(as.numeric(all$fecha_co - all$fecha_ci), digits=0)
+all$anticipacion <- round(as.numeric(all$fecha_ci - as.Date(all$fecha_reserva)), digits=0)
+
+# haciendo un table de anticipacion me da algunos valores negativos (unos 2,400). los filtro.
+all <- subset(all, anticipacion >= 0)
+
+# Ratio dias de semana y fines de semana
+
+#esto me dice el nombre del dia de la semana
+all$dayweek <- weekdays(as.Date(all$fecha_ci))
+
+# esto me dice el numero de dia de semana, del 0 al 6, empezando por el domingo = 0 y terminando por sabado = 6
+all$ndayweek <- as.POSIXlt(as.Date(all$fecha_ci))$wday
+
+# quiero que el domingo sea 7 en vez de 0
+all$ndayweek <- as.numeric(gsub(0, 7, all$ndayweek))
+
+# cuantas semanas completas de 7 dias (con dos dias de finde) hay en la duracion del viaje?
+# trunc(duracion/7)
+all$semanascomp <- trunc(all$duracion/7)
+
+# resto de dias fuera de semanas completas:
+all$resto <- trunc(all$duracion) - all$semanascomp * 7
+
+# cuento dias de fin de semana extras a la semana completa 
+all$diaextra <- ifelse(all$ndayweek == 7, 1,
+                       ifelse((all$resto + all$ndayweek) == 7, 1, 
+                              ifelse((all$resto + all$ndayweek) > 7, 2, 0)))
+
+# Saco el numero de dias de finde (dos por semana completa, mas los dias extra)
+all$diasfinde <- all$semanascomp * 2 + all$diaextra 
+
+# saco el ratio "dias de finde" / "duracion" del viaje
+all$ratiofinde <- ( all$diasfinde ) / all$duracion
+
+# Borro estas variables
+all$dayweek <- NULL
+all$diasfinde <- NULL
+all$ndayweek <- NULL
+all$diaextra <- NULL
+all$semanascomp  <- NULL
+all$resto  <- NULL
+
+# distancia
+load("/home/despegar/rstudio_data/vseminario/datos utiles/info iatas.rda")
+iatas.destino <- subset(iatas.frame[,c(2,7,8,12,14)])
+setnames(iatas.destino, 1:5, c("iataCode","lat.destino","lon.destino","country.destino","continente")) # aca cambie el nombre de la columna para no confundirme en el merge
+
+all <- merge(all, iatas.destino, by.x="dc", by.y="iataCode", all.x=T)
+
+# asumo que la latitud y longitud del origen son los de buenos aires (19.4326077,-99.13320799999997)
+all$lat.origen <- -34.575
+all$lon.origen <- -58.370277777778
+
+source("/home/despegar/rstudio_data/vseminario/Funciones/funcion distancia km.R")
+
+all$lat.origen <- as.numeric(as.character(all$lat.origen))
+all$lon.origen <- as.numeric(as.character(all$lon.origen))
+all$lat.destino <- as.numeric(as.character(all$lat.destino))
+all$lon.destino <- as.numeric(as.character(all$lon.destino))
+
+all$distancia <- earth.dist (all$lon.origen,all$lat.origen,all$lon.destino,all$lat.destino)
+
+all$lat.origen <- NULL
+all$lon.origen <- NULL
+all$lat.destino <- NULL
+all$lon.destino <- NULL
+
+# limpio el workspace
+rm(earth.dist, iatas.destino, iatas.frame)
+
+# Vuelo domestico o internacional?
+all$cc <- as.character(all$cc)
+all$country.destino <- as.character(all$country.destino)
+
+all$domestico <- ifelse(all$cc == all$country.destino, 1, 0)
+
+all$dest.type <- ifelse(all$cc == all$country.destino, "Domestico", 
+                        ifelse(all$continente == 'SA' | all$continente == 'AMC', "Latam", "RestoDelMundo"))
+
+# hotel rooms
+# hay 10 que tienen mas de 4
+all <- subset(all, hr <5)
+
+####COMISIONES####
+comisiones <- read.table("/home/despegar/rstudio_data/vseminario/Elasticidad Hoteles/AR/comisionesAR.csv", sep=",", header =T, quote = "")
+
+all <- merge(all, comisiones, by.x="hid", by.y="id", all.x=T)
+
+#para los hoteles que no tengo la comision, usar 12,61% para MX, 13.59% para CL y 14.68% para PE
+all$comision <- ifelse(is.na(all$comision)==T, 0.0927, all$comision)
+
+# precio por habitacion por noche
+#mpri viene siempre vacio asi que lo completo dividiendo (pri/hr)/noches
+all$mpri <- ifelse(all$fl=="detail", all$pri/all$hr, 
+                   (all$pri/all$hr)/all$duracion) 
+all$pritax.y.fee <- ifelse(all$fl=="detail", NA, 
+                           (all$pritax/all$hr)/all$duracion) #es tax y fee por habitacion por noche
+
+# Precios y tax
+#saco obs para las cuales no vino el campo exch.
+all$exch <- as.numeric(as.character(all$exch))
+all <- subset(all, cur =="ARS" | cur== "USD")
+all <- subset(all, is.na(exch) == F)
+all <- subset(all, exch !="")
+all <- subset(all, ! exch<1 )
+# allex <- subset(all, cur=="ARS" | exch>8)
+
+# no tengo el campo de tax AFIP 35% maldita sea. Lo genero
+all$afip <- ifelse(all$domestico==0 & all$fl!="detail",all$mpri/1.35*0.35,
+                   ifelse(all$fl=="detail", NA, 0))
+
+all$mpri <- as.numeric(as.character(all$mpri)) #es precio final por habitacion por noche
+all$pritax.y.fee <- as.numeric(as.character(all$pritax.y.fee))
+
+all$pritax.y.fee.usd <- all$pritax.y.fee / all$exch # mas de la mitad es NA porque no se muestra en DETAIL
+all$pri.usd <- all$mpri / all$exch
+all$afip.usd <- all$afip / all$exch
+
+#saco los 663 hoteles donde el precio es mayor a 2000 por noche en usd (hay uno de 11000 usd por noche)
+allhigh <- subset(all, pri.usd >= 2000)
+
+# vuelo hoteles de mas de US$2000, que son el 0,1% de la muestra
+#tambien vuelo aquellos para los que no tengo precio
+all <- subset(all, pri.usd <2000)
+all <- subset(all, pri.usd >10)
+
+
+all$tax.y.fee.percent <-  (all$pritax.y.fee.usd + all$afip.usd) / all$pri.usd * 100
+all$costo.y.comision.excl.tax <- all$pri.usd - all$pritax.y.fee.usd - all$afip.usd
+all$tax.comision <- 21 # promedio IVA en AR
+all$pri.antes.de.fee.usd <- all$pri.usd/(1+(all$abtest/100)*(1+all$tax.comision/100))
+all$fee.excl.tax.usd <- all$abtest/100*all$pri.antes.de.fee.usd
+all$fee.incl.tax.usd <- all$fee.excl.tax.usd*(1+all$tax.comision/100) #es el fee mas el tax del fee
+
+all$tax.sin.fee.sin.afip.usd <- all$pritax.y.fee.usd - all$fee.incl.tax.usd 
+all$tax.percent <- (all$tax.sin.fee.sin.afip.usd+all$afip.usd)/all$pri.antes.de.fee.usd*100
+all$costo.excl.tax <- all$costo.y.comision.excl.tax - all$pri.antes.de.fee.usd*all$comision
+
+# ERROR!!! hay 33.904 para AR, 4145 para MX y 6601 para PEyCL en "allerror" casos en que el fee que supuestamente se debio computar por el abtest es
+# mayor a pritax.y.fee.usd, que es el campo que contiene fee e impuestos
+# excluyo los casos en que eso pasa
+allerror <- subset(all, pritax.y.fee.usd < fee.incl.tax.usd)
+
+all <- subset(all, pritax.y.fee.usd>=fee.incl.tax.usd | is.na(pritax.y.fee.usd))
+
+# Traveler Type
+#    Single: "1", "1|0|0", "1|0"
+#    Couple: "2", "2|0|0", "2|0"
+#    Family: all others
+all$traveler <- ifelse(all$di == "1" | all$di == "1|0|0" | all$di == "1|0", "single",
+                       ifelse(all$di == "2" | all$di == "2|0|0" | all$di == "2|0", "couple","family"))
+
+# Viaje de negocios
+all$dayco <- weekdays(as.Date(all$fecha_co))
+all$dayci <- weekdays(as.Date(all$fecha_ci))
+
+all$work <- ifelse(all$duracion < 7 & all$anticipacion < 7,
+                   ifelse(all$dayco != "Saturday" & all$dayco != "Sunday" & all$dayco != "Monday", 
+                          ifelse(all$dayci != "Friday" & all$dayci != "Saturday", 1,0),0),0)
+
+# channel no tiene sentido porque elegi una de varias acciones. 
+# algunos usuarios tuvieron acciones tanto en desktop como en mobile
+
+# Dummies duracion
+all$dumdur <- ifelse(all$duracion < 3, "1o2", 
+                     ifelse(all$duracion < 7 & all$duracion > 2, "3a6",
+                            ifelse(all$duracion < 10 & all$duracion > 6, "7a9",
+                                   ifelse(all$duracion < 15 & all$duracion > 9, "10a14",
+                                          ifelse(all$duracion < 22 & all$duracion > 14, "15a21", "21mas")))))
+
+# saco algunas variables que no sirven para el logit
+#all$destino_IATA <- NULL
+#all$fl <- NULL
+all$pr <- NULL
+#all$country <- NULL
+# all$hotel_ID <- NULL
+# all$email <- NULL
+
+# Estrellas
+# hay 25,376 filas de 552,931 que tienen 0 estrellas. las saco porque no tiene sentido
+all$pricestar <- ifelse(all$hc==0, NA, all$pri.usd/all$hc)
+all$pricestar.excl.fee <- ifelse(all$hc==0, NA, all$pri.antes.de.fee.usd / all$hc) 
+
+#### TRANSFORMACIONES #####
+all$duracion2 <- all$duracion^2
+all$duracion3 <- all$duracion^3
+all$anticipacion2 <- all$anticipacion^2 
+all$anticipacion3 <- all$anticipacion^3 
+all$ratiofinde2 <- all$ratiofinde^2 
+all$ratiofinde3 <- all$ratiofinde^3
+all$abtest2 <- all$abtest^2
+all$abtest3 <- all$abtest^3
+all$tax.percent2 <- all$tax.percent^2
+all$tax.percent3 <- all$tax.percent^3
+all$comi.mas.fee <- all$comision*100 + all$abtest
+all$pricestar.excl.fee2 <- all$pri.antes.de.fee.usd / all$hc^2
+all$pricestar.excl.fee12 <- all$pri.antes.de.fee.usd / all$hc^(1/2)
+all$hc2 <- all$hc^2
+
+#separo un subset donde las estrellas sean mayores a cero
+allstarszero <- subset(all, hc == 0)
+all <- subset(all, hc != 0)
+all <- subset(all, hc > 0 & hc <6)
+
+################## ME QUEDE ACA ###################
+save(all,file="All para regresion AR.Rda")
+
+#### CORRELACIONES ####
+# veo las correlaciones entre las variables. solo puedo hacerlo con las numericas. 
+all.num <- subset(allsubJORGE, select=c(compro,abtest,pri.usd,hc,tax.percent,checkout.count,detail.count,
+                                search.count,thanks.count,duracion,anticipacion,ratiofinde,
+                                distancia,domestico,hr))
+
+correlaciones <- round((cor(all.num, use="pairwise")), digits=2)
+write.csv(correlaciones, file = "correlaciones.csv")
+
+#### TABLAS DE FRECUENCIAS #####
+freqdur <- table(all$duracion)
+write.csv(freqdur, file = "freq duracion.csv")
+
+freqanticip <- table(all$duracion)
+write.csv(freqanticip, file = "freq anticipacion.csv")
+
+#### ME QUEDO SOLO CON CO Y TX ####
+# y saco las obs donde hay NA en las variables de la regresion, asi despues hago 
+# un cbind con el predict, ya que matchear por row.names no esta resultando
+allsubJORGE <- subset(all, fl != "detail"&
+                   !is.na(all$abtest)&!is.na(all$anticipacion)&
+                   !is.na(all$duracion)&!is.na(all$traveler)&
+                   !is.na(all$domestico)&
+                   !is.na(all$pri.usd)&
+                   !is.na(all$comision)&all$tax.percent>0
+                   &pritax.y.fee.usd>0)
+#&!is.na(all$pricestar.excl.fee)
+
+#### separo data en train y test ####
+## 90% of the sample size
+smp.size <- floor(0.9 * nrow(allsub))
+
+## set the seed to make your partition reproductible
+set.seed(1)
+train.ind <- sample(seq_len(nrow(allsub)), size = smp.size)
+
+alltrain <- allsub[train.ind, ]
+alltest <- allsub[-train.ind, ]
+
+rm(smp.size,train.ind )
+#### REGRESION GENERAL ####
+# (resultante de muchas otras regresiones poniendo y sacando variables) tax.orig2 + 
+glmt.0 <- glm(compro ~ abtest +  anticipacion + anticipacion2 + pri.usd +
+               duracion + duracion2 + traveler + tax.percent + dest.type + hc,
+              data = allsubJORGE, family = binomial)
+summary(glmt.0)
+
+, subset = c( abtest>1 )
+  dest.type 
+
+#### Predict y ROC de train ####
+glmt0.fitted <- as.data.frame(predict(glmt.0, type = "response"))
+# chequeo que los row.names sean identicos asi se que cada fitted value corresponde a esa fila
+identical(row.names(allsub), row.names(glmt0.fitted)) 
+pred.t0 <- cbind(allsub[,c("compro")], glmt0.fitted)
+
+# curva ROC
+pred <- prediction(pred.t0$predict, pred.t0$alltrain)
+perf <- performance(pred,"tpr","fpr")
+plot(perf)
+AUC <- performance(pred, 'auc')
+
+opt.cut = function(perf, pred){
+  cut.ind = mapply(FUN=function(x, y, p){
+    d = (x - 0)^2 + (y-1)^2
+    ind = which(d == min(d))
+    c(sensitivity = y[[ind]], specificity = 1-x[[ind]], 
+      cutoff = p[[ind]])
+  }, perf@x.values, perf@y.values, pred@cutoffs)
+}
+print(opt.cut(perf, pred))
+
+allpredict <- subset(allsub, allsub$userid %in% allsub$userid)
+
+
+
+#### Predict y ROC de test ####
+glmt0.fitted.test <- as.data.frame(predict(glmt.0, newdata = alltest, type = "response"))
+# chequeo que los row.names sean identicos asi se que cada fitted value corresponde a esa fila
+identical(row.names(alltest), row.names(glmt0.fitted.test)) 
+pred.t0.test <- cbind(alltest[,c("compro")], glmt0.fitted.test)
+
+# curva ROC
+pred.test <- prediction(pred.t0.test$predict, pred.t0.test$alltest)
+perf.test <- performance(pred,"tpr","fpr")
+par(bg = 'white')
+plot(perf.test, print.AUC=T )
+abline(a=0, b= 1)
+AUC.test <- performance(pred, 'auc')
+
+
+
+
+
+## precision/recall curve (x-axis: recall, y-axis: precision)
+prec.rec <- performance(pred, "prec", "rec")
+plot(prec.rec)
+
+## sensitivity/specificity curve (x-axis: specificity,
+## y-axis: sensitivity)
+sens.spec <- performance(pred, "sens", "spec")
+plot(sens.spec)
+
+
+#### Regresiones POR SEGMENTO ####
+
+glmt.1 <- glm(compro ~ abtest,
+              data = allsub, family = binomial, 
+              subset = c(cc=="CL"))
+summary(glmt.1)
+
+# mpri.baseusd es el precio por noche por habitacion en usd. tiene 332051 NA
+
+
+plot(allsub$abtest, allsub$compro)
+
+
+hist(alltrain$duracion, plot=T, breaks=20)
+
+
+
+#### VER COSAS ####
+
+# costo sin tax promedio por estrellas
+aggregate(alltrain$costo.excl.tax, by = list(stars = alltrain$hc), FUN="mean", na.rm = T)
+
+# comision/precio (antes de fee) promedio por estrellas
+aggregate(alltrain$comision, by = list(stars = alltrain$hc), FUN="mean", na.rm = T)
+
+# precio (antes de fee) promedio por estrellas
+aggregate(alltrain$pri.antes.de.fee.usd, by = list(stars = alltrain$hc), FUN="mean", na.rm = T)
+
+# costo.y.comision.excl.tax promedio por estrellas
+aggregate(alltrain$costo.y.comision.excl.tax, by = list(stars = alltrain$hc), FUN="mean", na.rm = T)
+
+# tax.percent (sin fee) promedio por estrellas
+aggregate(alltrain$tax.percent, by = list(stars = alltrain$hc), FUN="mean", na.rm = T)
+
+# comision promedio por dest.type
+aggregate(all$comision, by = list(stars = all$domestico), FUN="mean", na.rm = T)
+
+
+#### CONTAR gente en cada segmento ####
+nrow(subset(all, traveler=="couple"
+            &dest.type=="Latam"
+            &anticipacion>0&anticipacion>4
+            &duracion>3&duracion<11))
+
+
+#### SPLIT DATA ####
+
+# 25 millones de usuarios imposibles de procesar
+# parto la data en 4. aleatoriamente. primero en dos partes, y luego en dos partes cada mitad
+
+#### separo data en 2 ####
+## 50% of the sample size
+subset.size <- floor(0.5 * nrow(checkers))
+## set the seed to make your partition reproductible
+set.seed(1)
+subset.ind <- sample(seq_len(nrow(checkers)), size = subset.size)
+checkers1 <- checkers[subset.ind, ]
+checkers2 <- checkers[-subset.ind, ]
+## 50% of the sample size
+subset.size <- floor(0.5 * nrow(checkers1))
+## set the seed to make your partition reproductible
+set.seed(1)
+subset.ind <- sample(seq_len(nrow(checkers1)), size = subset.size)
+checkersA <- checkers1[subset.ind, ]
+checkersB <- checkers1[-subset.ind, ]
+## 50% of the sample size
+subset.size <- floor(0.5 * nrow(checkers2))
+## set the seed to make your partition reproductible
+set.seed(1)
+subset.ind <- sample(seq_len(nrow(checkers2)), size = subset.size)
+checkersC <- checkers2[subset.ind, ]
+checkersD <- checkers2[-subset.ind, ]
+## 50% of the sample size
+subset.size <- floor(0.5 * nrow(buyers))
+## set the seed to make your partition reproductible
+set.seed(1)
+subset.ind <- sample(seq_len(nrow(buyers)), size = subset.size)
+buyers1 <- buyers[subset.ind, ]
+buyers2 <- buyers[-subset.ind, ]
+## 50% of the sample size
+subset.size <- floor(0.5 * nrow(buyers1))
+## set the seed to make your partition reproductible
+set.seed(1)
+subset.ind <- sample(seq_len(nrow(buyers1)), size = subset.size)
+buyersA <- buyers1[subset.ind, ]
+buyersB <- buyers1[-subset.ind, ]
+## 50% of the sample size
+subset.size <- floor(0.5 * nrow(buyers2))
+## set the seed to make your partition reproductible
+set.seed(1)
+subset.ind <- sample(seq_len(nrow(buyers2)), size = subset.size)
+buyersC <- buyers2[subset.ind, ]
+buyersD <- buyers2[-subset.ind, ]
+
+rm(subset.size,subset.ind, checkers1, checkers2, buyers1, buyers2, buyers, checkers )
+
+# UNO BUY Y CHECK 
+allA <- rbind(buyersA, checkersA)
+allB <- rbind(buyersB, checkersB)
+allC <- rbind(buyersC, checkersC)
+allD <- rbind(buyersD, checkersD)
+
+#save(allA,file="all A AR.Rda")
+#save(allB,file="all B AR.Rda")
+#save(allC,file="all C AR.Rda")
+#save(allD,file="all D AR.Rda")
