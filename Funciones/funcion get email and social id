@@ -1,0 +1,33 @@
+getEmailSocialID <- function(uid){
+ 
+  #Reemplazo backoffice... por 10.2.7.6
+  
+  url <- paste0("10.2.7.6/euler-service/user/",uid,"/record/")
+  
+  #Le pego por curl al servicio
+  
+  json <- try(fromJSON(getURL(url, httpheader = c("X-Cluster : euler-web-beta"))), 
+              silent = T)
+  if (class(json) == "try-error") {
+    return(NA)
+  }
+  
+  json.un <- unlist(json$data)
+  
+  emails <- grep("^emailSources\\.",names(json.un),value=T)
+  emails <- gsub("^emailSources\\.","",emails)
+  
+  if(length(emails) > 0){
+    email.frame <- data.frame(id=uid,email=emails)
+  } else {email.frame <- NA}
+  
+  
+  
+  socialid.ind <- grep("^despegarId$", names(json.un))
+  socialid <- json.un[socialid.ind]
+  
+  names(socialid) <- c()
+  
+  return(list(emails=email.frame,socialid=socialid))
+  
+}
