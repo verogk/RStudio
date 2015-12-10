@@ -1,0 +1,31 @@
+getUserProfile <- function(id){
+  
+  url <- paste0("http://10.2.7.6/euler-service/user/",id,"/record/")
+  
+  json <- try(fromJSON(getURL(url, httpheader= c("X-Cluster : euler-web-beta-h2"))),silent = T)
+  if(class(json) == "try-error"){
+    return(NA)
+    
+  }
+  
+  else{
+    
+    json.unl <- unlist(json$data)
+    Traveler_Type <- json.unl["profiles.TRAVELER_TYPE.name"]
+    Theme <- json.unl["profiles.THEME.name"]
+    Route_Type <- json.unl["profiles.ROUTE_TYPE.name"]
+    Duration_Travel <- json.unl["profiles.DURATION_TRAVEL.name"]
+    Purchase_Anticipation <- json.unl["profiles.PURCHASE_ANTICIPATION.name"]
+    Nivel_Soc <- json.unl["profiles.NIVEL_SOC.name"]
+    Gender <- json.unl["profiles.GENDER.name"]
+    Age <- json.unl["profiles.AGE.name"]
+    ret <- rbind(id,Traveler_Type,Theme,Route_Type,Duration_Travel,Purchase_Anticipation,Nivel_Soc,Gender,Age)
+    return(ret)}
+}
+
+# Se aplica asi:
+# UP.sample <- sapply(act30days$userid, getUserProfile)
+# UP.sample <- as.data.frame(UP.sample)
+
+# traspongo la matriz
+# UP.sample <- t(UP.sample[,2:ncol(UP.sample)])
