@@ -1,0 +1,85 @@
+setwd("/home/despegar/rstudio_data/vseminario/datos utiles/")
+
+# Magia de Hernan para tabular la info que venia con formato JSON
+
+source("tabulate json Hernan.R")
+
+url.city.info <- "http://10.2.7.6/geo-services-web/service/webcontext/airport/simplified/allAirports"
+json <- fromJSON(getURL(url.city.info))
+json.un <- unlist(json$data)
+
+excl <- c(grep("^boundary",unique(names(json.un)),value=T), "version", "description.PT", "commercial")
+
+vars <- setdiff(unique(names(json.un)),excl)
+
+inp.vars <- paste0("^",vars,"$")
+
+airp.frame <- tabulateJSON(json.un,"^oid$",inp.vars,vars)
+
+airp.frame <- as.data.frame(airp.frame)
+
+# El JSON que traje lo quiero para mergearlo con el "info ciudades.rda" 
+# El objetivo final es completar los iatas que faltan en "ciudades" por ser aeropuertos
+# y poner a que pais pertenece cada destino de vuelo.
+# El JSON que traje tiene los cityOid que usare para mergear con la tabla de ciudades. 
+# De ahi sacare los country codes tambien 
+
+load("info ciudades.rda")
+
+sub.city.frame <- subset(city.frame[,c("oid","administrativeDivisionOid","offset","timezoneId","countryOid","countryIata","continentOID","cont.code")])
+
+airp.frame <- merge(airp.frame, sub.city.frame,by.x="cityOid", by.y="oid", all.x=T)
+
+# saco citiOid asi me quedan las mismas columnas en city.frame y airp.frame 
+
+airp.frame <- airp.frame[, -grep("cityOid", names(airp.frame) )] 
+
+# reordeno nombres de columnas 
+airp.frame <- airp.frame[c("oid","iataCode","description.EN","description.ES","code","administrativeDivisionOid","latitude","longitude","offset","timezoneId","countryOid","countryIata","continentOID","cont.code")]
+
+city.frame <- city.frame[c("oid","iataCode","description.EN","description.ES","code","administrativeDivisionOid","latitude","longitude","offset","timezoneId","countryOid","countryIata","continentOID","cont.code")]
+
+# homogeinizo el tipo de vector asi no me los coerciona a cosas raras (factores)
+
+airp.frame$iataCode <- as.character(airp.frame$iataCode)
+city.frame$iataCode <- as.character(city.frame$iataCode)
+airp.frame$oid <- as.numeric(as.character(airp.frame$oid))
+city.frame$oid <- as.numeric(as.character(city.frame$oid))
+
+# Tengo que hacer uniques segun iataCode del rbind de las tablas. 
+# Para eso Primero ordeno la tabla grande primero por iataCode, Segundo por el indice 1,2 (que lo creo en la variable "orden")
+
+city.frame$orden <- 1
+airp.frame$orden <- 2
+
+# rbind de las dos tablas
+
+iatas.frame <- rbind.data.frame(airp.frame, city.frame)
+
+# Ordeno y hago uniques. La funcion order es solo para data tables
+
+iatas.frame <- as.data.table(iatas.frame)
+
+iatas.frame <- iatas.frame[order(iataCode, orden)]
+
+# Saco los duplicados (si hay una ciudad y un aeropuerto con el mismo IATA, se queda la ciudad. 
+# (para eso ordene primero por IATA y segundo por orden)
+
+iatas.frame$duplicates <- duplicated(iatas.frame$iataCode)
+
+iatas.frame <- iatas.frame[iatas.frame$duplicates == "FALSE"]
+
+iatas.frame <- as.data.frame(iatas.frame)
+
+iatas.frame$orden <- NULL
+iatas.frame$duplicates <- NULL
+
+# no se para que es esto:
+row.names(iatas.frame) <- c()
+
+save(iatas.frame, file="info iatas.rda")
+
+# para exportar a csv:
+#write.csv(iatas.frame, file = "info iatas.csv")
+
+rm(sub.city.frame, city.frame, airp.frame,excl,inp.vars,json,json.un,url.city.info,vars, tabulateJSON)
