@@ -1,0 +1,72 @@
+# se le puede pegar por email o por userid
+
+# variables posibles:
+# "userid",
+# "datetime", (timestamp)
+# "pr", (product)
+# "fl", (flow)
+# "txid", (transaction id) 
+# "ci", (check in date)
+# "co" (check out date)
+# "ab" (ab tests)
+# "cur" (currency)
+# "dn" (domain name. ej DESPEGAR)
+# "cc" (country)
+# "dc" (ciudad de destino)
+# "ro" (ruta de vuelo DOMESTIC o INTERNATIONAL)
+# "dtype" (device type)
+# "ft" (ONEWAY; ROUNDTRIP)
+# activar el paquete de Despegar
+
+#otras funciones requeridas:
+source("/home/despegar/rstudio_data/vseminario/Funciones/tabulate json Hernan.R")
+library("RJSONIO")
+
+tabulateUserHistory <- function(user,actions=1000,from=0,
+                                flow=NULL,prod=NULL, variables, 
+                                var.names, country=NULL){
+
+  if(grepl("^[a-z0-9]{8}(\\-[a-z0-9]{4}){3}\\-[a-z0-9]{12}$",user)){
+    type <- "user"
+  } else {type <- "email"}
+  
+    url <- paste0("http://10.2.7.6/euler-service/",type,"/",user,"/history/top/",actions,
+                  "/from/",from,"?flow=",flow,"&pr=",prod,"&cc=",country)
+  
+  json <- try(fromJSON(getURL(url, httpheader= c("X-Cluster : euler-web-beta-hc2"))),silent = T)
+  if(class(json) == "try-error"){
+    return(NA)  
+  }
+    else{
+  
+  json.unl <- unlist(json$data)
+  
+  var.names <- variables
+  variables <- gsub("\\[|\\]",".",variables)
+  variables <- paste0("^actions\\.actionData\\.",variables,"$")
+  
+  outp <- tabulateJSON(json.unl, "^actions.userId$",variables,var.names)
+  outp <- cbind(user,outp)
+  }
+  return(outp)
+}
+
+### Parametro obligatorio que hay que declarar
+#variables1 <- c("datetime", "pr", "fl", "txid", "ci", "co", "ft", "oc", "dc")
+
+### Parametros optativos
+#flow1 <- "SEARCH,THANKS,DETAIL"   # flows separados por ,
+#prod1 <- "FLIGHTS,HOTELS"    # productos separados por ,
+#actions <- 100
+#country <- "BR"
+
+### llamar a la funcion con lapply
+#ejemplo <- lapply(vector.de.userids.o.emails,function(x) tabulateUserHistory(x, variables=variables1, prod=prod1, flow=flow1))
+#ejemplo <- do.call(rbind.data.frame, ejemplo)
+
+### llamar a la funcion con parLapply
+#clus <- makeCluster(10)
+#clusterExport(clus, list("tabulateJSON", "fromJSON", "getURL", "tabulateUserHistory", "variables1", "prod1", "flow1"), envir=environment())
+#ejemplo <- parLapply(clus, vector.de.userids.o.emails, function(x) tabulateUserHistory(x, variables=variables1, prod=prod1, flow=flow1))
+#ejemplo <- do.call(rbind.data.frame, ejemplo)
+#stopCluster(clus)
