@@ -1,0 +1,61 @@
+# funcion para obtener el precio mas bajo para una ruta ORIGEN_DESTINO y dentro de un rango de fechas
+
+# product = 1 es paquetes
+# product = 0 es vuelos
+
+source("/home/despegar/rstudio_data/vseminario/Funciones/tabulate json Hernan.R")
+library("RJSONIO")
+
+getLowestPrice <- function(COUNTRY, SEARCHTYPE="ROUNDTRIP", ORIGEN, DESTINO, PRODUCT=1, CHANNEL="site", 
+                     FARE="TOTAL", PRICEFORMAT="ROUNDED", CURRENCY="USD", PRICEBREAKDOWN="ShortPrice",
+                     FROM=today()+60, TO=today()+90){
+  
+  url <- paste0("http://10.2.7.6/indec/search/cheapest?country=",COUNTRY,"&searchType=", SEARCHTYPE, "&origin=", ORIGEN, 
+                "&destination=", DESTINO, "&product=", PRODUCT, "&channel=", CHANNEL, "&fareCriteria=", FARE,
+                "&priceFormat=", PRICEFORMAT, "&currencies=", CURRENCY, "&priceBreakdown=", PRICEBREAKDOWN, 
+                "&fromDate=", FROM,"&toDate=", TO)
+    
+  json <- try(fromJSON(getURL(url, httpheader= c("X-Cluster : euler-web-beta-h2"))),silent = T)
+   
+  if(class(json) == "try-error"){
+  return(NA)
+  } else{
+        
+  json.unl <- unlist(json)
+  from <- json.unl["date"]
+  to <- json.unl["toDate"]
+  variables <-  c("currency","totalFare")
+  var.names <- variables
+  variables <- gsub("\\[|\\]",".",variables)
+  variables <- paste0("^prices\\.",variables,"$")
+  outp <- tabulateJSON(json.unl, "^prices.currency$",variables,var.names)
+  outp <- cbind(from, to, ORIGEN, DESTINO, outp)
+  }
+    
+  return(outp)
+}
+
+
+
+    
+### llamar a la funcion con lapply
+#ejemplo <- lapply(vector.de.IATAS, function(x) getLowestPrice(DESTINO=x, COUNTRY="AR", ORIGEN="BUE", FROM="20160101", TO="20160131", PRODUCT=1))
+#ejemplo <- do.call(rbind.data.frame, ejemplo)
+
+### llamar a la funcion con parLapply
+# primero hay que declarar los valores, para despues exportarlos al cluster y ponerlos como input en la funcion+
+#COUNTRY1 <- "AR"
+#ORIGEN1 <- "EZE"
+#FROM1 <- "20160101"
+#TO1 <- "20160131"
+#PRODUCT1 <- 1
+
+#clus <- makeCluster(10)
+#clusterExport(clus, list("tabulateJSON", "fromJSON", "getURL", "getLowestPrice", "COUNTRY1", "ORIGEN1", "FROM1", "TO1", "PRODUCT1"), envir=environment())
+#ejemplo <- parLapply(clus, vector.de.IATAS, function(x) getLowestPrice(DESTINO=x, COUNTRY=COUNTRY1, ORIGEN=ORIGEN1, FROM=FROM1, TO=TO1, PRODUCT=PRODUCT1))
+#ejemplo <- do.call(rbind.data.frame, ejemplo)
+#stopCluster(clus)
+
+
+
+
