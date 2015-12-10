@@ -1,0 +1,28 @@
+library("RJSONIO")
+
+getABtag <- function(id, PRODUCT, FLOW, COUNTRY){
+  url <- paste0("http://10.2.7.6/ab-testing/service/generate/ab?pr=",PRODUCT,"&fl=", FLOW, "&cc=", COUNTRY, "&id=", id)
+  json <- try(fromJSON(getURL(url, httpheader= c("X-Cluster : euler-web-beta-h2"))),silent = T)
+  if(class(json) == "try-error"){
+    return(NA)
+  }
+  else{
+    json.unl <- unlist(json$data)
+    abtest <- json.unl["ab"]
+    # en que posicion estan el primer y segundo pipe? 
+    pipeone<- gregexpr(pattern ="\\|", abtest)[[1]][1]
+    pipetwo<- gregexpr(pattern ="\\|", abtest)[[1]][2]
+    abtag <- substr(x = abtest, start = pipeone + 1, stop = pipetwo -1)
+    ret <- rbind(abtag)
+    return(ret)}
+}
+
+#ejemplo <- getABtag("e9dbf108-c606-4458-9bf1-08c606e45894", "HOTELS", "DETAIL", "AR")
+#ejemplo <- as.data.frame(ejemplo)
+
+#ejemplo <- lapply(buyers$userid,function(x) getABtag(x, "HOTELS", "DETAIL", "AR"))
+#ejemplo <- as.data.frame(ejemplo)
+
+# traspongo la matriz
+# ejemplo <- t(dataids.get[,1:ncol(dataids.get)])
+# ejemplo <- as.data.frame(dataids.get[complete.cases(dataids.get[,"id"]),])
