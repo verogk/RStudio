@@ -1,0 +1,36 @@
+library("RJSONIO")
+
+# userid tiene que venir en formato character
+
+getEmails <- function(uid){
+  url <- paste0("10.2.7.6/euler-service/user/",uid,"/record/")
+  #Le pego por curl al servicio
+  json <- try(fromJSON(getURL(url, httpheader = c("X-Cluster : euler-web-beta-h2"))), 
+              silent = T)
+  if (class(json) == "try-error") {
+    return(NA)
+  }
+  
+  json.un <- unlist(json$data)
+  emails <- grep("^emailSources\\.",names(json.un),value=T)
+  emails <- gsub("^emailSources\\.","",emails)
+  
+  if(length(emails) > 0){
+    email.frame <- data.frame(id=uid,email=emails)
+  } else {email.frame <- NA}
+  
+  return(email.frame)
+  
+}
+
+##########
+
+# como llamar a la funcion en parallel
+# clus <- makeCluster(10)
+# clusterExport(clus, list=c("getEmails", "fromJSON", "getURL"))
+# uid.info <- parLapply(clus,userids$trackerid, getEmails)
+# stopCluster(clus)
+
+# uid.info <- lapply(userids$trackerid, getEmails)
+
+#lala <- do.call(rbind.data.frame, uid.info)
