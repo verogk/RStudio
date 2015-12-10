@@ -1,0 +1,72 @@
+# funciona con el IDCRO como input
+
+
+#setwd("/home/despegar/rstudio_data/vseminario/Recomendador Activities/")
+
+#dataids <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/beerroma2.csv", sep=",", header =T)
+
+#dataids <- as.data.frame(activids[1:200,]$transaction_code)
+#setnames(dataids, 1, "data.id")
+
+getActivityData <- function(id, curlHandle){
+  
+  url <- paste0("http://10.2.7.6/bookings/",id,"?data")
+  if(missing(curlHandle)) {
+    gurl <- getURL(url, httpheader= c("X-CLIENT: analytics"))  
+  } 
+  else {
+    gurl <- getURL(url, curl= curlHandle, httpheader= c("X-CLIENT: analytics"))  
+  }
+  
+  json <- try(fromJSON(gurl),silent = T)
+  
+  if(class(json) == "try-error" | length(json)<3 ){
+    return(NA)
+    
+  } 
+  else {       
+    json.unl <- unlist(json)
+    product <- json.unl["product"] 
+    idcro <- json.unl["booking_id"] 
+    booking_date <- json.unl["booking_date"] 
+    provider <- json.unl["provider"] 
+    activity_name <- json.unl["service_name"] 
+    tracking_id <- json.unl["tracking_id"] 
+    iata <- json.unl["destination_city_code"] 
+    description <- json.unl["description"] 
+    ci <- json.unl["start_date"]
+    co <- json.unl["end_date"]
+    length <- json.unl["days_count"] 
+    price <- as.numeric(json.unl["price.total_price"])
+    currency <- json.unl["price.currency"]  
+    tour_id <- json.unl["tour_id"]
+    ticket_id <- json.unl["ticket_id"]
+    insurance_id <- json.unl["insurance_id"]
+    transfer_id <- json.unl["transfer_id"]
+    activity_id <- ifelse(is.na(tour_id)==F, tour_id ,
+                          ifelse(is.na(ticket_id)==F, ticket_id, 
+                                 ifelse(is.na(insurance_id)==F, insurance_id,
+                                        transfer_id)))
+    activity_type <- ifelse(is.na(tour_id)==F,"tours",
+                            ifelse(is.na(ticket_id)==F, "tickets", 
+                                   ifelse(is.na(insurance_id)==F, "insurance",
+                                          "transfer")))
+            
+    ret <- rbind(idcro,activity_id,product,activity_type,booking_date,provider,
+                 activity_name,tracking_id,iata,description,ci,co,length,price,
+                 currency)
+  }
+  return(ret)
+}
+
+curlHandle = getCurlHandle()
+
+# Se aplica asi:
+#curlHandle = getCurlHandle()
+#alldata <- lapply(dataids$data.id,function(x) getActivityData(x, curlHandle))
+
+#alldata <- as.data.frame(alldata)
+# traspongo la matriz
+#alldata <- t(alldata[,1:ncol(alldata)])
+#datawona <- as.data.frame(alldata[complete.cases(alldata[,"idcro"]),])
+#rownames(datawona) <- NULL
