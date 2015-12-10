@@ -1,0 +1,28 @@
+setwd("/home/despegar/rstudio_data/vseminario/datos utiles/")
+
+# Magia de Hernan para tabular la info que venia con formato JSON
+
+source("tabulate json Hernan.R")
+
+url.cont.info <- "http://10.2.7.6/geo-services-web/service/webcontext/Continent/getAllContinentsWithCountries/ES"
+json <- fromJSON(getURL(url.cont.info))
+json.un <- unlist(json$data)
+
+excl <- c(grep("^boundary",unique(names(json.un)),value=T))
+
+vars <- setdiff(unique(names(json.un)),excl)
+
+inp.vars <- paste0("^",vars,"$")
+
+cont.frame <- tabulateJSON(json.un,"^oid$",inp.vars,vars)
+
+cont.frame <- as.data.frame(cont.frame)
+
+cont.frame <- subset(cont.frame[,c("oid","code","geoAreaDescriptions.name")])
+
+save(cont.frame, file="info continentes.rda")
+
+# para exportar a csv:
+#write.csv(cont.frame, file = "info continentes.csv")
+
+rm(airp.frame,excl,inp.vars,json,json.un,url.cont.info,vars)
