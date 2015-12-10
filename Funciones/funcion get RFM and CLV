@@ -1,0 +1,35 @@
+getRFM <- function(email){
+  #Reemplazo backoffice... por 10.2.7.6
+  url <- paste0("10.2.7.6/euler-service/v3/rfm/",email,"/")
+  #Le pego por curl al servicio
+  
+  json <- try(fromJSON(getURL(url, httpheader = c("X-Cluster : euler-web-beta-h2"))), 
+              silent = T)
+  if (class(json) == "try-error") {
+    return(NA)
+  }
+  else{
+    json.un <- unlist(json)
+    r <- json.un["data.rfm.r"]
+    f <- json.un["data.rfm.f"]
+    m <- json.un["data.rfm.m"]
+    clv<- json.un["data.clv"]
+    mail<-as.character(email)
+    
+    ret<-rbind(mail,r,f,m,clv)
+    
+  } 
+  return(ret)
+}
+
+# como llamar la funcion
+
+#clus <- makeCluster(10)
+#clusterExport(clus, list=c("fromJSON","getRFM", "getURL"))
+#data_rfm <- parLapply(clus, eventosnl$email, getRFM)
+#stopCluster(clus)
+
+#data_rfm <- as.data.frame(data_rfm)
+#data_rfm <- t(data_rfm[,1:ncol(data_rfm)])
+#data_rfm <- as.data.frame(data_rfm)
+#rownames(data_rfm) <- NULL
