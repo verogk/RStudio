@@ -1,0 +1,11 @@
+getCurrencies <- function(){
+  url <- "http://10.2.7.6/alfred-service/entities/currencyrates/ANY/ANY/ANY"
+  json <- fromJSON(getURL(url))
+  json.un <- unlist(json$data)
+  tab <- tabulateJSON(json.un,"^entityList\\.id$",c("entityList\\.code","entityList\\.rate"),c("moneda","valor"))
+  tab <- as.data.frame(tab)
+  tab$valor <- as.numeric(as.character(tab$valor))
+  return(tab)
+}
+
+# lala <- getCurrencies()
