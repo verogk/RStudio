@@ -1,0 +1,41 @@
+setwd("/home/despegar/rstudio_data/vseminario/datos utiles/")
+
+source("tabulate json Hernan.R")
+
+url.city.info <- "http://10.2.7.6/geo-services-web/service/webcontext/country/simplified/allCountries"
+json <- fromJSON(getURL(url.city.info))
+json.un <- unlist(json$data)
+
+excl <- c(grep("^boundary",unique(names(json.un)),value=T), "version", "description.PT","intlAccessCode")
+
+vars <- setdiff(unique(names(json.un)),excl)
+
+inp.vars <- paste0("^",vars,"$")
+
+country.frame <- tabulateJSON(json.un,"^oid$",inp.vars,vars)
+
+country.frame <- as.data.frame(country.frame)
+
+# hasta aca llegaba el file hecho por Hernan. Ahora agrego los continentes.  
+  
+load("info continentes.rda")
+
+names(cont.frame) <- c("cont.oid","cont.code", "cont.name")
+
+country.frame <- merge(country.frame, cont.frame,by.x="continentOID", by.y="cont.oid", all.x=T)
+
+country.frame <- country.frame[,c(2:9,1,10)]
+
+country.frame <- country.frame[order(country.frame$iataCode),]
+
+row.names(country.frame) <- c()
+
+# no se para que es esto:
+# row.names(country.frame) <- c()
+
+save(country.frame, file="info countries.rda")
+
+# para exportar a csv:
+#write.csv(countries.frame, file = "info countries.csv")
+
+rm(cont.frame, excl, inp.vars, json, json.un, vars, url.city.info)
