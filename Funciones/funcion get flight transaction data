@@ -1,0 +1,62 @@
+# usada para medir elasticidades de vuelos 
+
+getFlightTransactionData <- function(id, curlHandle){
+  
+  url <- paste0("http://10.2.7.6/roma/transactions/",id,"?with=FLIGHTS")
+  if(missing(curlHandle)) {
+    gurl <- getURL(url, httpheader= c("X-CLIENT: analytics"))  
+  } 
+  else {
+    gurl <- getURL(url, curl= curlHandle, httpheader= c("X-CLIENT: chas-flight"))  
+  }
+  
+  json <- try(fromJSON(gurl),silent = T)
+  
+  if(class(json) == "try-error" | length(json)<3 ){
+    return(NA)
+    
+  } 
+  else {       
+    json.unl <- unlist(json)
+    pnr <- json.unl["flights.pnr"] 
+    country <- json.unl["country"]
+    tracker.id <- json.unl["meta_data_dto.tracker_id"]
+    channel <- json.unl["channel"]
+    cancelation <- json.unl["flights.flight_status_dto.cancelation_reason"]
+    price.post.jump <- json.unl["display_price.total"]
+    payment.method <- json.unl["flights.active_payment_method_dto.type"]
+    bank <- json.unl["flights.active_payment_method_dto.payment_method_credit_card.bank_name"]
+    card.brand <- json.unl["flights.active_payment_method_dto.payment_method_credit_card.card.type"] 
+    installments <- json.unl["flights.active_payment_method_dto.payment_method_credit_card.installments_quantity"]
+    currency <- json.unl["flights.charge.currency"]
+    currency.rate <- as.numeric(json.unl["flights.charge.conversion_ratio"])
+    n.adults <- as.numeric(json.unl["flights.charge.adult_tkt_charges.passangers_quantity"])
+    n.children <- as.numeric(json.unl["flights.charge.child_tkt_charges.passangers_quantity"])
+    n.passengers <- sum(n.adults,n.children, na.rm=TRUE)
+    itinerary.type <- json.unl["flights.itinerary.type"]
+    route.type <- json.unl["flights.itinerary.route_type"]
+    class <- json.unl["flights.itinerary.routes.segments.flight_class"]
+    seats.remaining <- json$flights[[1]]$itinerary$routes[[1]]$segments[[1]]$booking_classes[[1]]$seats_remaining
+    ci.date <- json$flights[[1]]$itinerary$routes[[1]]$first_segment$departure_date$date_with_offset
+    co.date.formula <- noquote(paste0("json$flights[[1]]$itinerary$routes", "[[", length(json$flights[[1]]$itinerary$routes), "]]","$first_segment$departure_date$date_with_offset"))
+    co.date <- eval(parse(text=co.date.formula)) 
+  
+    ret <- rbind(id,pnr,country,tracker.id,channel,cancelation,price.post.jump,payment.method,bank,card.brand,installments,
+                          currency,currency.rate,n.adults,n.children,n.passengers,itinerary.type,route.type,class,seats.remaining,ci.date,co.date)
+    
+  }
+
+  return(ret)
+ 
+}
+
+curlHandle = getCurlHandle()
+
+# Se aplica asi:
+# curlHandle = getCurlHandle()
+# ejemplo <- lapply(tabla$columna,function(x) getFlightTransactionData(x, curlHandle))
+# ejemplo <- as.data.frame(ejemplo)
+
+# traspongo la matriz
+# ejemplo <- t(dataids.get[,1:ncol(dataids.get)])
+# ejemplo <- as.data.frame(dataids.get[complete.cases(dataids.get[,"id"]),])
