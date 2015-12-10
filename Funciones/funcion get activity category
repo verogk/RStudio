@@ -1,0 +1,87 @@
+# funciona con el activity id y tipo de activity como input
+
+sample <- actdata[1:10, c("activity_id", "activity_type")]
+
+#setwd("/home/despegar/rstudio_data/vseminario/Recomendador Activities/")
+
+#dataids <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/beerroma2.csv", sep=",", header =T)
+
+#dataids <- as.data.frame(activids[1:200,]$transaction_code)
+#setnames(dataids, 1, "data.id")
+
+
+getActivityCategory <- function(type, id, curlHandle){
+  url <- paste0("https://proxy.despexds.net/delfos/", type ,"/", id)
+  cer_file <- "/home/despegar/rstudio_data/vseminario/datos utiles/certificados/cgp-cert-prod.pem"
+    if(missing(curlHandle)) {
+    gurl <- getURL(url, httpheader= c("X-CLIENT: analytics"), cainfo = cer_file)
+  } 
+  else {
+    gurl <- getURL(url, curl= curlHandle, httpheader= c("X-CLIENT: analytics"))  
+  }
+  
+  json <- try(fromJSON(gurl),silent = T)
+  
+  if(class(json) == "try-error" | length(json)<3 ){
+    return(NA)
+    
+  } 
+  else {       
+    json.unl <- unlist(json)
+    idcro <- json.unl["transaction_id"] 
+    cat <- json.unl["category"] 
+    ticket_type <- json.unl["ticket_type"]
+    category <- ifelse (is.na(ticket_type)==T,cat, ticket_type  )
+    modality <- json.unl["modality.code"]  
+    length <- ifelse(modality=="24H", 1, json.unl["total_days"])    
+    tour_id <- json.unl["tour_id"]
+    ticket_id <- json.unl["ticket_id"]
+    insurance_id <- json.unl["insurance_id"]
+    transfer_id <- json.unl["transfer_id"]
+    activity_id <- ifelse(is.na(tour_id)==F, tour_id ,
+                          ifelse(is.na(ticket_id)==F, ticket_id, 
+                                 ifelse(is.na(insurance_id)==F, insurance_id,
+                                        transfer_id)))
+  
+            
+    ret <- rbind(idcro,category,activity_id,length)
+  }
+  return(ret)
+}
+
+#curlHandle = getCurlHandle()
+
+# Se aplica asi:
+curlHandle = getCurlHandle()
+alldata <- apply(sample[,c("activity_type","activity_id")],
+                  function(x) getActivityCategory(x[1],x[2],curlHandle))
+
+algo <- mapply (getActivityCategory, type=sample$activity_type, id=sample$activity_id,
+                curlHandle=curlHandle)
+
+clus <- makeCluster(9)
+
+clusterExport(clus, list=c("assignTS","compare.frame"))
+
+search.ts <- parApply(clus,user.hist[,c("num.id","datetime","hid")],1, function(x) assignTS(x[1],x[2],x[3],compare.frame))
+
+stopCluster(clus)
+
+#### EN QUE QUEDO ####
+
+curlHandle = getCurlHandle()
+> alldata <- lapply(sample[,c("activity_type","activity_id")],
+                    + function(x) getActivityCategory(x[1],x[2], curlHandle))
+Error in function (type, msg, asError = TRUE)  : 
+  Peer certificate cannot be authenticated with known CA certificates
+> curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, TRUE);
+Error: unexpected '$' in "curl_setopt($"
+
+##########
+
+
+#alldata <- as.data.frame(alldata)
+# traspongo la matriz
+#alldata <- t(alldata[,1:ncol(alldata)])
+#datawona <- as.data.frame(alldata[complete.cases(alldata[,"idcro"]),])
+#rownames(datawona) <- NULL
