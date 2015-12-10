@@ -1,0 +1,35 @@
+setwd("/home/despegar/rstudio_data/vseminario/datos utiles/")
+
+source("tabulate json Hernan.R")
+
+url.city.info <- "http://10.2.7.6/geo-services-web/service/webcontext/city/simplified/allCities"
+json <- fromJSON(getURL(url.city.info))
+json.un <- unlist(json$data)
+
+excl <- c(grep("^boundary",unique(names(json.un)),value=T), "version", "description.PT")
+
+vars <- setdiff(unique(names(json.un)),excl)
+
+inp.vars <- paste0("^",vars,"$")
+
+city.frame <- tabulateJSON(json.un,"^oid$",inp.vars,vars)
+
+city.frame <- as.data.frame(city.frame)
+
+load("info countries.rda")
+
+names(country.frame)[2] <- "countryIata"
+
+country.frame <- as.data.frame(country.frame)
+
+city.frame <- merge(city.frame, country.frame[,c("oid","countryIata","continentOID","cont.code")], by.x="countryOid", by.y="oid", all.x=T)
+
+city.frame <- city.frame[,c(2:11,1,12:14)]
+
+city.frame$oid <- as.numeric(as.character(city.frame$oid))
+
+city.frame <- city.frame[order(city.frame$oid),]
+
+row.names(city.frame) <- c()
+
+save(city.frame, file="info ciudades.rda")
