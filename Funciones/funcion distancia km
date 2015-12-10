@@ -1,0 +1,17 @@
+# distancia entre origen y destino (en km)
+
+earth.dist <- function (longitud.oc, latitud.oc, longitud.dc, latitud.dc)
+{
+  rad <- pi/180
+  a1 <- latitud.oc * rad
+  a2 <- longitud.oc * rad
+  b1 <- latitud.dc * rad
+  b2 <- longitud.dc * rad
+  dlon <- b2 - a2
+  dlat <- b1 - a1
+  a <- (sin(dlat/2))^2 + cos(a1) * cos(b1) * (sin(dlon/2))^2
+  c <- 2 * atan2(sqrt(a), sqrt(1 - a))
+  R <- 6378.145
+  d <- R * c
+  return(d)
+}
