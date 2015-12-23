@@ -1,0 +1,71 @@
+setwd("/home/despegar/rstudio_data/vseminario/A pedido")
+
+beto <- read.csv("/home/despegar/rstudio_data/jcrorig/funnel_vero.csv")
+
+# saco columnas innecesarias como "nombre"
+bob <- tabla_funnel[,c("email","active","suscribed","hasAlerts","hasBought","hasPendingTrip","trackerid","socialid",
+                       "hasActionsLastMonth","totalGB","lastBuyTime","flights","hotels","cars","packages","insurances",
+                       "activities","anotherProduct","isInternational","isDomestic","hasMoreThanOneMail","lastBuyTimeMonth")]
+
+# las clases seran character o numeric.
+# el problema era que eran FACTOR. Muerte a los factor!
+bob[,c("email","hasBought","hasPendingTrip","trackerid","socialid","hasActionsLastMonth","isInternational","isDomestic",
+         "hasMoreThanOneMail")] <- data.frame(lapply(bob[,c("email","hasBought","hasPendingTrip","trackerid","socialid",
+                                                              "hasActionsLastMonth","isInternational","isDomestic",
+                                                              "hasMoreThanOneMail")], as.character), stringsAsFactors=FALSE)
+
+# saco los mails deformes
+bob <- subset(bob, nchar(email) <= 40)
+
+# saco los trackerids y social ids deformes
+bob$trackerid <- ifelse(nchar(bob$trackerid)!=36, 0, 1)
+bob$socialid <- ifelse(nchar(bob$socialid)!=24, 0, 1)
+
+bob <- subset(bob, nchar(email) <= 40)
+bob <- subset(bob, !duplicated(bob$email)) 
+
+#install.packages("data.table")
+bob <- as.data.table(bob)
+
+system.time(
+  agregado2 <- bob[,list(active=sum(active>0),
+                          suscribed=sum(suscribed>0),
+                          hasAlerts=sum(hasAlerts>0),
+                          hasBought=sum(hasBought=="true"), 
+                          hasPendingTrip=sum(hasPendingTrip=="true"),
+                          hasTrackerid=sum(trackerid>0),
+                          hasSocialid=sum(socialid>0),
+                          hasActionLastMonth=sum(hasActionsLastMonth=="true"),
+                          totalGB=sum(totalGB),
+                          lastBuyTimeMonth= lastBuyTimeMonth, 
+                          # flights,
+                          # hotels,
+                          # cars,
+                          # packages,
+                          # insurances,
+                          # activities,
+                          # anotherProduct,
+                          isInternational = sum(isInternational=="true"),
+                          isDomestic = sum(isDomestic=="true"),
+                          hasMoreThanOneMail= sum(hasMoreThanOneMail=="true")
+  ),by=list(email)]
+)
+
+
+
+
+agregado.email2 = agregado2[,list(emails = length(email),totalGB=sum(totalGB))
+                          ,by=list(active,
+                                   suscribed,
+                                   hasAlerts,
+                                   hasBought,
+                                   hasPendingTrip,
+                                   hasTrackerid,
+                                   hasSocialid,
+                                   hasActionLastMonth,
+                                   lastBuyTimeMonth,
+                                   isInternational,
+                                   isDomestic,
+                                   hasMoreThanOneMail)]
+
+agregado.email2$lastBuyTimeMonth <- ifelse(agregado.email2$lastBuyTimeMonth==100, 0, agregado.email2$lastBuyTimeMonth )
