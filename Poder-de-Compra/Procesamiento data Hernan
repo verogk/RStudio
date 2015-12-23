@@ -1,0 +1,517 @@
+#### Initial Set-up ####
+
+setwd("/home/despegar/rstudio_data/hres/modelos SEM/")
+
+load("AR/sample AR SEM.rda")
+load("AR/user hist sample AR SEM.rda")
+
+user.hist.final <- do.call("rbind",user.hist)
+
+user.hist.final <- as.data.frame(user.hist.final)
+
+#Grepeo que valores son numericos
+
+num.vars <- which(sapply(user.hist.final[1:10000,], function(x) any(grepl("^[0-9]+$",x))))
+
+excl <- which(names(user.hist.final) %in% c("di","fst"))
+
+num.vars <- setdiff(num.vars, excl)
+
+for(i in num.vars){
+  user.hist.final[,i] <- as.numeric(as.character(user.hist.final[,i]))
+}
+
+factor.vars <- c("user","cc","fl","pr","oc","dc","fregime","fpaymentOpt","fam","event","eventtype","cur","dtype","dbr",
+                 "pul","dol")
+
+for(i in factor.vars){
+  user.hist.final[,i] <- as.factor(user.hist.final[,i])  
+}
+
+user.hist.final <- data.table(user.hist.final)
+
+#Aca hay que hacer un save!! #
+
+#Saco los mins porque lops borre como un boludo y subseteo a 10 dias
+
+#starts.uh <- user.hist.final[,min(datetime),by=list(user)]
+
+#setnames(starts.uh,names(starts.uh),c("user","min.ts")) 
+
+#user.hist.final <- merge(user.hist.final,starts.uh, by="user")
+
+sample <- data.table(sample)
+
+sample <- sample[order(timestamp),]
+
+sample <- sample[!duplicated(userid),]
+
+sample.reduction <- sample[,list(userid,timestamp)]
+
+setnames(sample.reduction, names(sample.reduction), c("user","max.ts"))
+
+user.hist.final <- merge(user.hist.final, sample.reduction, by="user")
+
+user.hist.final <- user.hist.final[datetime <= max.ts,]
+
+rm(list=c("excl","factor.vars","i","num.vars","sample.reduction"))
+
+options(digits=15)
+
+user.hist.final <- user.hist.final[eventtype != "autocomplete" | is.na(eventtype),]
+
+user.hist.final <- user.hist.final[order(user,datetime)]
+
+#sample.uid <- sample[,list(userid)]
+
+#setnames(sample.uid, names(sample.uid), c("user"))
+
+
+
+                                      # Creacion de variables #
+
+#### Vars grales ####
+
+###Parse distribution
+
+#Adultos
+
+user.hist.final$di <- as.character(user.hist.final$di)
+user.hist.final[grep("!",di),adultos:=sapply(di, function(x) sum(as.numeric(substr(unlist(strsplit(x,split="!")),1,1))))]
+user.hist.final[grep("\\|",di),adultos:=as.numeric(substr(di,1,1))]
+user.hist.final[grep("^[0-9]$",di),adultos:=as.numeric(di)]
+
+#Ninios
+
+user.hist.final[grep("!",di),ninios:=sapply(di, function(x) length(setdiff(gregexpr("\\-",x)[[1]],-1)))]
+user.hist.final[grep("\\|",di),ninios:=as.numeric(substr(di,3,3))]
+user.hist.final[grep("^[0-9]$",di),ninios:=0]
+
+#Duracion
+
+user.hist.final[,duracion:=as.numeric(as.Date(co)-as.Date(ci))]
+
+#paso a lower los productos. I am sorrounded by idiots
+
+user.hist.final$pr <- tolower(user.hist.final$pr)
+
+#Anticipacion
+
+user.hist.final[,date.busqueda:=as.Date(as.POSIXct(datetime/1000,origin="1970-01-01",tz="GMT"))]
+user.hist.final[,anticipacion:=as.numeric(as.Date(ci) - date.busqueda)]
+
+
+#Falta sacar las fechas de Cars. Las saco por arafue y despues se las pego como un campeon
+
+#user.hist.final[pr == "cars",duracion:=as.numeric(as.Date(co)-as.Date(ci))]
+
+
+
+#user.hist.final[pr == "cruises",duracion:=duracion * -1]
+
+#Unifico origen y destino
+
+user.hist.final[pr == "cars",dc:=pul]
+
+#### Sesion ####
+
+dif.time <- diff(user.hist.final$datetime,1) > 1800*1000
+
+starts.indexes <- with(user.hist.final, which(c(T,user[2:nrow(user.hist.final)] != user[1:nrow(user.hist.final)-1]) | c(T,dif.time)))
+
+end.indexes <- starts.indexes[2:length(starts.indexes)] - 1
+
+session.table <- user.hist.final[starts.indexes,list(user,datetime)]
+
+session.table$end.ts <- user.hist.final$datetime[c(end.indexes,nrow(user.hist.final))]
+
+session.table[,session.dur:= end.ts - datetime]
+
+session.table$session.dur <- round(session.table$session.dur/1000)
+
+#session.table$session.dur[session.table$session.dur < 0 & session.table$session.dur > -1000] <- 0
+
+#Saco metricas de sesiones por usuario
+
+session.frame <- session.table[,list(session.time.mean=round(mean(session.dur)),
+                                   session.amount = length(end.ts),
+                                    session.range = round((max(end.ts) - min(datetime))/1000),
+                                   session.tendency=sum(diff(session.dur,1))),by=user]
+
+#session.frame <- merge(sample.uid, session.frame, all.x=T, by="user")
+
+#session.frame$session.amount[is.na(session.frame$session.amount)] <- 0
+
+rm(list=c("session.table","dif.time","starts.indexes","end.indexes"))
+
+#Bineo la info de sesion
+
+session.frame <- data.table(session.frame)
+
+quantiles.session <- lapply(session.frame[,2:ncol(session.frame),with=F], quantilesPrices)
+
+binned.session <- lapply(names(quantiles.session), function(x) binning(session.frame[[x]],quantiles.session[[x]]))
+binned.session <- do.call("cbind", binned.session)
+colnames(binned.session) <- paste0(names(quantiles.session),"_binned")
+
+session.frame <- cbind(session.frame[,list(user)],binned.session)
+
+rm(binned.session)
+
+#### Flow y profunidad ####
+
+user.hist.final <- droplevels(user.hist.final)
+user.hist.final$pr <- as.factor(user.hist.final$pr)
+user.hist.final$fl <- as.factor(user.hist.final$fl)
+levels(user.hist.final$pr) <- tolower(levels(user.hist.final$pr))
+levels(user.hist.final$fl) <- tolower(levels(user.hist.final$fl))
+
+user.hist.final[,pr.rec:=pr]
+change <- levels(user.hist.final$pr.rec) %in% c("activities","cars","disney_as_product","insurance",
+                                                "combinedproducts","packages","cruises","disney","universal","vactionrentals")
+levels(user.hist.final$pr.rec)[change] <- "ona"
+
+interm.table <- user.hist.final[fl %in% c("checkout", "search","thanks") & pr.rec %in% c("ona","flights","hotels"),length(pri),by=list(user,pr.rec,fl)]
+
+flow.frame <- dcast(interm.table,user ~ pr.rec + fl,fun.aggregate = sum)
+
+rm(list=c("interm.table","change"))
+
+flow.frame <- data.table(flow.frame)
+
+#flow.frame <- merge(sample.uid, flow.frame, all.x=T, by="user")
+
+#flow.frame[is.na(flow.frame)] <- 0
+
+  for(i in c("ona","flights","hotels")){
+    comando <- paste0("flow.frame[,",i,"_ratio:=round(",i,"_checkout/",i,"_search,4),]")
+    eval(parse(text=comando))
+  }
+   
+
+flow.frame[,total_checkout:=ona_checkout+flights_checkout+hotels_checkout]
+
+flow.frame[,total_ratio:=round(total_checkout/(ona_search+flights_search+hotels_search),4)]
+
+rm(list=c("i","comando"))
+
+#Binneo los ratios
+
+ratio.vars <- grep("_ratio$",names(flow.frame))
+
+quantiles.flow <- lapply(flow.frame[,ratio.vars,with=F], quantilesRatio)
+names(quantiles.flow) <- names(flow.frame)[ratio.vars]
+
+ratio.vars <- grep("_ratio$",names(flow.frame),value=T)
+
+binned.ratios <- lapply(ratio.vars, function(x) binning(flow.frame[[x]],quantiles.flow[[x]]))
+binned.ratios <- do.call("cbind", binned.ratios)
+colnames(binned.ratios) <- paste0(ratio.vars,"_binned")
+
+keep.vars <- which(!grepl("_ratio$",names(flow.frame)))
+
+flow.frame <- cbind(flow.frame[,keep.vars,with=F],binned.ratios)
+
+rm(list=c("ratio.vars","binned.ratios","keep.vars"))
+
+#### Precios ####
+
+levels(user.hist.final$cc) <- toupper(levels(user.hist.final$cc))
+
+#Armo la tabla de currencies y se la joineo#
+
+currencies <- data.table(getCurrencies())
+
+setnames(currencies,names(currencies),c("cur","valor"))
+
+user.hist.final <- merge(user.hist.final,currencies, by="cur", all.x=T)
+
+user.hist.final[,pri.usd:=pri/exch]
+
+user.hist.final[pr.rec %in% c("hotels","ona") & pr != "cars" ,pri.usd_dia:=pri.usd/duracion]
+user.hist.final[!pr.rec %in% c("hotels","ona") ,pri.usd_dia:=pri.usd]
+
+interm.table <- user.hist.final[fl == "checkout" & pr.rec %in% c("ona","flights","hotels"),
+                                list(price_mean=round(mean(pri.usd_dia, na.rm=T),4),
+                                      price_tendency=round(sum(diff(pri.usd_dia,1)),4),
+                                     price_mean_ad=round(mean(pri.usd_dia/adultos, na.rm=T),4)
+                                     ),by=list(user,pr.rec)]
+
+interm.table2 <- melt(interm.table)
+
+prices.frame <- dcast(interm.table2,user ~ pr.rec + variable,max,na.rm=T,value.var="value")
+
+#prices.frame <- merge(sample.uid, prices.frame, by="user",all.x=T)
+
+repl.na <- prices.frame == -Inf
+
+#Binneo prices
+
+prices.frame[repl.na] <- NA
+prices.frame <- data.table(prices.frame)
+
+quantiles.prices <- lapply(prices.frame[,2:ncol(prices.frame),with=F], quantilesPrices)
+names(quantiles.prices) <- names(prices.frame)[2:ncol(prices.frame)]
+
+binned.prices <- lapply(names(quantiles.prices), function(x) binning(prices.frame[[x]],quantiles.prices[[x]]))
+binned.prices <- do.call("cbind", binned.prices)
+colnames(binned.prices) <- paste0(names(quantiles.prices),"_binned")
+
+prices.frame <- cbind(prices.frame[,list(user)],binned.prices)
+
+rm(list=c("interm.table","interm.table2","currencies","repl.na","binned.prices"))
+
+#### Datos grales ####
+
+#Device cleanup
+
+user.hist.final[is.na(dtype)|dtype == "", dtype:= "COMPUTER"]
+
+gral_data.frame <- user.hist.final[,list(actions.amount=length(datetime),
+                                      adults = as.numeric(names(which.max(table(adultos)))),
+                                      children = as.numeric(names(which.max(table(ninios)))),
+                                      country = names(which.max(table(cc))),
+                                      duration = median(duracion,na.rm=T),
+                                      anticipation = median(anticipacion,na.rm=T),
+                                      device = names(which.max(table(dtype)))), by=user]
+
+#gral_data.frame <- merge(sample.uid, gral_data.frame, by="user", all.x=T)
+
+gral_data.frame$actions.amount[is.na(gral_data.frame$actions.amount)] <- 0
+gral_data.frame$device[is.na(gral_data.frame$device)] <- "NULL"
+gral_data.frame$country[is.na(gral_data.frame$country)] <- names(table(gral_data.frame$country)[order(table(gral_data.frame$country),decreasing = T)])[1]
+
+gral_data.frame$anticipation[gral_data.frame$anticipation < 0] <- 0
+gral_data.frame$duration[gral_data.frame$duration < 0] <- 0
+
+#Binneo anticipacion y duracion
+
+antic_duration.vars <- grep("anticipation|duration",names(gral_data.frame))
+
+quantiles.antic_duration <- lapply(gral_data.frame[,antic_duration.vars,with=F], quantilesPrices)
+
+antic_duration.vars <- grep("anticipation|duration",names(gral_data.frame),value=T)
+
+binned.antic_duration <- lapply(antic_duration.vars, function(x) binning(gral_data.frame[[x]],quantiles.antic_duration[[x]]))
+binned.antic_duration <- do.call("cbind", binned.antic_duration)
+colnames(binned.antic_duration) <- paste0(antic_duration.vars,"_binned")
+
+keep.vars <- which(!grepl("anticipation|duration",names(gral_data.frame)))
+
+gral_data.frame <- cbind(gral_data.frame[,keep.vars,with=F],binned.antic_duration)
+
+rm(list=c("antic_duration.vars","binned.antic_duration","keep.vars"))
+
+
+#### Destination Frame ####
+
+interm.table <- user.hist.final[pr.rec %in% c("ona","hotels","flights"),list(max.destination = names(which.max(table(dc))),
+                                      max.origin = names(which.max(table(oc)))), by="user,pr.rec"]
+
+interm.table2 <- melt(interm.table, id.vars = c("user","pr.rec"))
+
+destination.frame <- dcast(interm.table2,user ~ pr.rec + variable,value.var="value")
+
+destination.frame$hotels_max.origin <- NULL
+
+#destination.frame <- merge(sample.uid, destination.frame, all.x=T, by="user")
+
+rm(list=c("interm.table","interm.table2"))
+
+
+# Le agrego pais y otras yerbas
+
+load("/home/despegar/rstudio_data/hres/funciones paquete/info ciudades.rda")
+
+destination.frame <- as.data.frame(destination.frame)
+
+cols <- names(destination.frame)[-1]
+
+temp.frame <- city.frame[,c("iataCode","countryIata")]
+
+for(i in cols){
+  
+  names(temp.frame)[2] <- paste(i,"countryIata",sep="_")
+  
+  destination.frame <- merge(destination.frame, temp.frame, 
+                             by.x=i, by.y="iataCode", all.x=T)
+}
+
+vars.order <- "user"
+
+for(i in c("ona","flights","hotels")){
+  for(j in c("max.origin","max.destination")){
+    vars.order <- c(vars.order, grep(paste(i,j,sep="_"),names(destination.frame),value=T))
+  }
+}
+
+destination.frame <- destination.frame[,vars.order]
+
+rm(list=c("city.frame","cols","i","j","vars.order","temp.frame"))
+
+
+destination.frame <- data.table(destination.frame)
+
+#### Thanks anteriores frame ####
+
+interm.table <- user.hist.final[fl == "thanks" & pr.rec %in% c("ona","flights","hotels"), max(datetime), by="user,pr.rec,max.ts"]
+
+#max.ts <- user.hist.final[user %in% interm.table$user, max(datetime), by="user"]
+
+thanks.frame <- dcast(interm.table, user + max.ts ~ pr.rec, sum)
+
+thanks.frame[thanks.frame == 0] <- NA
+
+#thanks.frame <- merge(thanks.frame, max.ts, by="user")
+
+names(thanks.frame)[3:(ncol(thanks.frame))] <- paste("thanks.ts.diff",names(thanks.frame)[3:(ncol(thanks.frame))],sep="_")
+
+#names(thanks.frame)[ncol(thanks.frame)] <- "last.action"
+
+thanks.frame <- data.table(thanks.frame)
+
+#thanks.frame <- merge(sample.uid, thanks.frame, by="user", all.x=T)
+
+for(i in 3:5) set(thanks.frame,j=i,value= (thanks.frame[["max.ts"]] - thanks.frame[[i]])/1000)
+
+thanks.frame$max.ts <- NULL
+
+thanks.vars <- grep("^thanks.ts.diff",names(thanks.frame))
+
+quantiles.thanks <- lapply(thanks.frame[,thanks.vars,with=F], quantilesPrices)
+names(quantiles.thanks) <- names(thanks.frame)[thanks.vars]
+
+binned.thanks <- lapply(names(quantiles.thanks), function(x) binning(thanks.frame[[x]],quantiles.thanks[[x]]))
+binned.thanks <- do.call("cbind", binned.thanks)
+colnames(binned.thanks) <- paste0(names(quantiles.thanks),"_binned")
+
+thanks.frame <- cbind(thanks.frame[,list(user)],binned.thanks)
+
+
+rm(list=c("interm.table","i","binned.thanks"))
+
+####Saco el last action y la diff con el para todos los usuarios####
+
+last.action.frame <- user.hist.final[fl %in% c("search","checkout","thanks"), list(last.action=max(datetime)), by="user,max.ts,fl"]
+
+last.action.frame <- dcast(last.action.frame, user + max.ts ~ fl, sum)
+
+last.action.frame[last.action.frame == 0] <- NA
+
+names(last.action.frame)[3:(ncol(last.action.frame))] <- paste("last.action.diff",names(last.action.frame)[3:(ncol(last.action.frame))],sep="_")
+
+for(i in 3:ncol(last.action.frame)) set(last.action.frame,j=i,value= (round((last.action.frame[["max.ts"]] - last.action.frame[[i]])/1000)))
+
+#Binning last actions
+
+last.action.frame <- data.table(last.action.frame)
+
+#sample.uid.maxts <- sample[,list(userid,timestamp)]
+
+#setnames(sample.uid.maxts, names(sample.uid.maxts), c("user","max.ts"))
+
+#last.action.frame <- merge(sample.uid.maxts, last.action.frame, by=c("user","max.ts"), all.x=T)
+
+last.action.vars <- grep("^last.action.diff",names(last.action.frame))
+
+quantiles.last.action <- lapply(last.action.frame[,last.action.vars,with=F], quantilesPrices)
+names(quantiles.last.action) <- names(last.action.frame)[last.action.vars]
+
+binned.last.action <- lapply(names(quantiles.last.action), function(x) binning(last.action.frame[[x]],quantiles.last.action[[x]]))
+binned.last.action <- do.call("cbind", binned.last.action)
+colnames(binned.last.action) <- paste0(names(quantiles.last.action),"_binned")
+
+last.action.frame <- cbind(last.action.frame[,list(user,max.ts)],binned.last.action)
+
+rm(list=c("binned.last.action","i","last.action.vars"))
+
+
+####Saco info de los max.ts####
+
+cut.frame <- subset(sample, userid %in% session.frame$user, select=c(userid,timestamp))
+
+setnames(cut.frame, names(cut.frame), c("user","max.ts"))
+
+cut.frame[,c("cut.weekday","cut.hour"):=
+                    list(weekdays(as.POSIXct(max.ts/1000,origin = "1970-01-01"),abbreviate = T),
+                         hour(as.POSIXct(max.ts/1000,origin = "1970-01-01")))]
+
+
+cut.frame$max.ts <- NULL
+
+#### Merge de todos los frames  y workout final####
+
+final.user.frame <- Reduce(function(...) merge(...,all=T,by="user"),mget(grep("\\.frame",ls(),value=T)))
+
+#Recode de los origenes y los destinos
+
+iata.vars <- grep("\\.(origin|destination)$",names(final.user.frame), value=T)
+
+iata.vars.pos <- grep("\\.(origin|destination)$",names(final.user.frame))
+
+keeps <- lapply(iata.vars, function(x) names(which(prop.table(with(final.user.frame,table(get(x)))) >= 0.01)))
+
+for(i in 1:length(iata.vars)){
+  final.user.frame[which(!get(iata.vars[i]) %in% c(keeps[[i]],""," ") & !is.na(get(iata.vars[i]))), iata.vars.pos[i]:="OTH"]
+  final.user.frame[which(is.na(get(iata.vars[i]))), iata.vars.pos[i]:="NULL"]
+} 
+
+rm("iata.vars","iata.vars.pos","keeps","i")
+
+#Saco flight type
+
+final.user.frame[,flight.type:= ifelse(flights_max.origin_countryIata == flights_max.destination_countryIata, "LOCAL","INTERNATIONAL")]
+
+#veo si son internacionales o nacionales los destinos
+
+country.vars <- grep("destination_countryIata$",names(final.user.frame), value=T)
+target.vars <- gsub("countryIata","type",country.vars)
+
+final.user.frame[,(target.vars):= lapply(.SD, function(x) ifelse(x == final.user.frame$country, "NATIONAL", "INTERNATIONAL")), .SDcols = country.vars]
+
+#Recode de los NA por NULL
+
+type.vars <- grep("type$",names(final.user.frame),value=T)
+type.vars.pos <- grep("type$",names(final.user.frame))
+
+for(i in 1:length(type.vars)){
+  final.user.frame[which(is.na(get(type.vars[i]))), type.vars.pos[i]:="NULL"]
+} 
+
+
+#Recode de los paises
+
+country.vars <- grep("_countryIata$",names(final.user.frame), value=T)
+country.vars.pos <- grep("_countryIata$",names(final.user.frame))
+
+keeps <- lapply(country.vars, function(x) names(which(prop.table(with(final.user.frame,table(get(x)))) >= 0.01)))
+
+for(i in 1:length(country.vars)){
+  final.user.frame[which(!get(country.vars[i]) %in% c(keeps[[i]],"") & !is.na(get(country.vars[i]))), country.vars.pos[i]:="OTH"]
+  final.user.frame[which(is.na(get(country.vars[i]))), country.vars.pos[i]:="NULL"]
+} 
+
+
+#Poner un 0 a los contadores
+
+counter.vars <- grep("checkout$|thanks$|search$",names(final.user.frame),value=T)
+
+final.user.frame[,(counter.vars):= lapply(.SD, function(x) ifelse(is.na(x),0,x)), .SDcols = counter.vars]
+
+final.user.frame <- droplevels(final.user.frame)
+
+final.user.frame$max.ts <- NULL
+
+#Poner NA a lo que corresponda
+
+binned.vars <- grep("binned$",names(final.user.frame),value=T)
+
+final.user.frame[,(binned.vars):= lapply(.SD, function(x) ifelse(is.na(x),"BINNA",x)), .SDcols = binned.vars]
+
+final.user.frame <- droplevels(final.user.frame)
+
+final.user.frame$max.ts <- NULL
+
+
+
+save(list=c("final.user.frame",grep("^quantiles",ls(),value=T),"keeps"), file="final frame para modelar_BR_binned_conbininfo2.rda")
