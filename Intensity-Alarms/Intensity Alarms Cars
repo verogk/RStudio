@@ -1,0 +1,165 @@
+##### BAJAR y PREPARAR DATOS #####
+
+#Seteamos la ruta dde se van a descargar los archivitos
+setwd("/home/despegar/rstudio_data/vseminario")
+
+# Descargamos la data
+getReduction("PRODUCT","CARS",20150426)
+getReduction("PRODUCT","CARS",20150425)
+getReduction("PRODUCT","CARS",20150424)
+getReduction("PRODUCT","CARS",20150423)
+getReduction("PRODUCT","CARS",20150422)
+getReduction("PRODUCT","CARS",20150421)
+getReduction("PRODUCT","CARS",20150420)
+
+FLIGHTS CARS PACKAGES
+
+# Levantamos la data
+cars_20_04 <- read.delim("/home/despegar/rstudio_data/vseminario/20150420-DATA_UPA_PRODUCT_CARS.txt", sep="\t", header =T)
+cars_21_04 <- read.delim("/home/despegar/rstudio_data/vseminario/20150421-DATA_UPA_PRODUCT_CARS.txt", sep="\t", header =T)
+cars_22_04 <- read.delim("/home/despegar/rstudio_data/vseminario/20150422-DATA_UPA_PRODUCT_CARS.txt", sep="\t", header =T)
+cars_23_04 <- read.delim("/home/despegar/rstudio_data/vseminario/20150423-DATA_UPA_PRODUCT_CARS.txt", sep="\t", header =T)
+cars_24_04 <- read.delim("/home/despegar/rstudio_data/vseminario/20150424-DATA_UPA_PRODUCT_CARS.txt", sep="\t", header =T)
+cars_25_04 <- read.delim("/home/despegar/rstudio_data/vseminario/20150425-DATA_UPA_PRODUCT_CARS.txt", sep="\t", header =T)
+cars_26_04 <- read.delim("/home/despegar/rstudio_data/vseminario/20150426-DATA_UPA_PRODUCT_CARS.txt", sep="\t", header =T)
+
+# saco columnas que no me sirven para que pese mucho menos
+cars_20_04 <- subset(cars_20_04[,c(1,2,3,5,6,7,12,14)])
+cars_21_04 <- subset(cars_21_04[,c(1,2,3,5,6,7,12,14)])
+cars_22_04 <- subset(cars_22_04[,c(1,2,3,5,6,7,12,14)])
+cars_23_04 <- subset(cars_23_04[,c(1,2,3,5,6,7,12,14)])
+cars_24_04 <- subset(cars_24_04[,c(1,2,3,5,6,7,12,14)])
+cars_25_04 <- subset(cars_25_04[,c(1,2,3,5,6,7,12,14)])
+cars_26_04 <- subset(cars_26_04[,c(1,2,3,5,6,7,12,14)])
+
+# Unimos las 7 tablas en una, por filas. 
+cars7days <- rbind (cars_20_04, cars_21_04, cars_22_04, cars_23_04, cars_24_04, cars_25_04, cars_26_04 )
+
+# filtro todo lo que no sea Search, CO o Thanks
+cars7days <- subset(cars7days, flow %in% c("CHECKOUT","SEARCH","THANKS"))
+
+# saco los userid en blanco y los sin tracker, y los sources Corporate, Agencias Afiliadas
+cars7days <- subset(cars7days, userid != "" & source != "Corporate" & source != "AgenciasAfiliadas" & userid != "sem_tracker_user_id")
+
+# Borro objetos para que no pese demasiado al reanudar la sesion de R Studio
+rm(cars_20_04, cars_21_04, cars_22_04, cars_23_04, cars_24_04, cars_25_04, cars_26_04)
+
+#La transformamos a data table
+cars7days <- data.table(cars7days)
+
+#Generamos variable timestamp a partir de FECHA y HORA
+#Timestamp esta en segundos
+cars7days$timestamp <- with(cars7days, paste(FECHA,HORA))
+cars7days$timestamp <- gsub("\\.[0-9]{3}","",cars7days$timestamp)
+cars7days$timestamp <- as.POSIXct(cars7days$timestamp, tz="GMT", format= "%Y-%m-%d %H:%M:%S")
+cars7days$timestamp <- as.numeric(cars7days$timestamp)
+
+#Ordenamos los datos por usuario, timestamp
+cars7days <- cars7days[with(cars7days, order(userid,timestamp))]
+
+
+#### Sesiones Matias ####
+
+# Agregamos nro. de sesion a la tabla hotels7days 
+# 1. Ponemos un nro. que indica el nro. de sesion por userid (con cada nuevo userid reinicia en 0)
+cars7days[,action.id:=rank(timestamp),list(userid)]
+
+# 2. Aca se hacen dos pasos en uno. Es como si creara un hotels7days.auxiliar que tiene userid,
+# ...una variable igual a timestamp llamada timestamp2, y un action.id que es igual al de la tabla
+# ...hotels7days pero corrido un lugar. Entonces hago un merge de esa tabla con hotels7days 
+# ...pidiendo que coincidan los userid y action.id con la variable que esta action.id corrida una fila. 
+cars7days = merge(cars7days,cars7days[,list(userid,timestamp2=timestamp,action.id=action.id+1)],by=c("userid","action.id"),all.x=T)
+cars7days[,time.dif:=timestamp-timestamp2]
+cars7days[,new.session:=ifelse((timestamp-timestamp2>1800)|(is.na(timestamp2)),1,0)]
+cars7days[,session.id:=cumsum(new.session),by=list(userid)]
+
+# Antes del pivot table deberia separar sesiones. Lo hago con una variable userid.session que mergee userid"-"new.session
+cars7days$user.session <- paste(cars7days$userid, cars7days$session.id, sep = " _ ")
+
+# Elimino userid que empieza en ! 
+cars7days <- subset(cars7days, !grepl("!", cars7days$userid))
+
+#### Filtro por pais ####
+
+# Argentina 
+
+carsAR <- subset(cars7days, country %in% c("AR"))
+
+# Pivot Table en R
+flowsAR <- dcast(data = carsAR, formula = user.session ~ flow, fun.aggregate = length, value.var = "country")
+
+# Filtro solo las que llegaron a comprar
+flowsAR.tx <- subset(flowsAR, THANKS > 0)
+
+# CHECKOUT, DETAIL Y SEARCH divididas por THANKS 
+flowsAR.tx$CHECKOUT.per.tx <- flowsAR.tx$CHECKOUT / flowsAR.tx$THANKS 
+flowsAR.tx$SEARCH.per.tx <- flowsAR.tx$SEARCH / flowsAR.tx$THANKS 
+
+flowsAR.tx$num.session <- gsub("^.*_", "", flowsAR.tx$user.session) 
+
+# Creo tablas de frecuencia
+CO.freqAR <- table(flowsAR.tx$CHECKOUT.per.tx)
+SE.freqAR <- table(flowsAR.tx$SEARCH.per.tx)
+
+
+# Brasil 
+
+carsBR <- subset(cars7days, country %in% c("BR"))
+
+# Pivot Table en R
+flowsBR <- dcast(data = carsBR, formula = user.session ~ flow, fun.aggregate = length, value.var = "country")
+
+# Filtro solo las que llegaron a comprar
+flowsBR.tx <- subset(flowsBR, THANKS > 0)
+
+# CHECKOUT, DETAIL Y SEARCH divididas por THANKS 
+flowsBR.tx$CHECKOUT.per.tx <- flowsBR.tx$CHECKOUT / flowsBR.tx$THANKS 
+flowsBR.tx$SEARCH.per.tx <- flowsBR.tx$SEARCH / flowsBR.tx$THANKS 
+
+flowsBR.tx$num.session <- gsub("^.*_", "", flowsBR.tx$user.session) 
+
+# Creo tablas de frecuencia
+CO.freqBR <- table(flowsBR.tx$CHECKOUT.per.tx)
+SE.freqBR <- table(flowsBR.tx$SEARCH.per.tx)
+
+
+# Mexico 
+
+carsMX <- subset(cars7days, country %in% c("MX"))
+
+# Pivot Table en R
+flowsMX <- dcast(data = carsMX, formula = user.session ~ flow, fun.aggregate = length, value.var = "country")
+
+# Filtro solo las que llegaron a comprar
+flowsMX.tx <- subset(flowsMX, THANKS > 0)
+
+# CHECKOUT, DETAIL Y SEARCH divididas por THANKS 
+flowsMX.tx$CHECKOUT.per.tx <- flowsMX.tx$CHECKOUT / flowsMX.tx$THANKS 
+flowsMX.tx$SEARCH.per.tx <- flowsMX.tx$SEARCH / flowsMX.tx$THANKS 
+
+flowsMX.tx$num.session <- gsub("^.*_", "", flowsMX.tx$user.session) 
+
+# Creo tablas de frecuencia
+CO.freqMX <- table(flowsMX.tx$CHECKOUT.per.tx)
+SE.freqMX <- table(flowsMX.tx$SEARCH.per.tx)
+
+
+# Resto del Mundo 
+carsRW <- subset(cars7days, !country %in% c("AR", "BR", "MX"))
+
+# Pivot Table en R
+flowsRW <- dcast(data = carsRW, formula = user.session ~ flow, fun.aggregate = length, value.var = "country")
+
+# Filtro solo las que llegaron a comprar
+flowsRW.tx <- subset(flowsRW, THANKS > 0)
+
+# CHECKOUT, DETAIL Y SEARCH divididas por THANKS 
+flowsRW.tx$CHECKOUT.per.tx <- flowsRW.tx$CHECKOUT / flowsRW.tx$THANKS 
+flowsRW.tx$SEARCH.per.tx <- flowsRW.tx$SEARCH / flowsRW.tx$THANKS 
+
+flowsRW.tx$num.session <- gsub("^.*_", "", flowsRW.tx$user.session) 
+
+# Creo tablas de frecuencia
+CO.freqRW <- table(flowsRW.tx$CHECKOUT.per.tx)
+SE.freqRW <- table(flowsRW.tx$SEARCH.per.tx)
+
