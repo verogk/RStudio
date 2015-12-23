@@ -1,0 +1,258 @@
+#Seteamos la ruta donde se van a descargar los archivos
+setwd("/home/despegar/rstudio_data/vseminario/Recomendador Activities/")
+
+#### Descargamos la data ####
+getReduction("PRODUCT","INSURANCE",20150901)
+getReduction("PRODUCT","TRANSFERS",20150901)
+getReduction("PRODUCT","ACTIVITIES",20150901)
+
+getReduction("PRODUCT","INSURANCE",20150902)
+getReduction("PRODUCT","TRANSFERS",20150902)
+getReduction("PRODUCT","ACTIVITIES",20150902)
+
+getReduction("PRODUCT","INSURANCE",20150903)
+getReduction("PRODUCT","TRANSFERS",20150903)
+getReduction("PRODUCT","ACTIVITIES",20150903)
+
+getReduction("PRODUCT","INSURANCE",20150904)
+getReduction("PRODUCT","TRANSFERS",20150904)
+getReduction("PRODUCT","ACTIVITIES",20150904)
+
+getReduction("PRODUCT","INSURANCE",20150905)
+getReduction("PRODUCT","TRANSFERS",20150905)
+getReduction("PRODUCT","ACTIVITIES",20150905)
+
+getReduction("PRODUCT","INSURANCE",20150906)
+getReduction("PRODUCT","TRANSFERS",20150906)
+getReduction("PRODUCT","ACTIVITIES",20150906)
+
+getReduction("PRODUCT","INSURANCE",20150907)
+getReduction("PRODUCT","TRANSFERS",20150907)
+getReduction("PRODUCT","ACTIVITIES",20150907)
+
+getReduction("PRODUCT","INSURANCE",20150908)
+getReduction("PRODUCT","TRANSFERS",20150908)
+getReduction("PRODUCT","ACTIVITIES",20150908)
+
+getReduction("PRODUCT","INSURANCE",20150909)
+getReduction("PRODUCT","TRANSFERS",20150909)
+getReduction("PRODUCT","ACTIVITIES",20150909)
+
+getReduction("PRODUCT","INSURANCE",20150910)
+getReduction("PRODUCT","TRANSFERS",20150910)
+getReduction("PRODUCT","ACTIVITIES",20150910)
+
+getReduction("PRODUCT","INSURANCE",20150911)
+getReduction("PRODUCT","TRANSFERS",20150911)
+getReduction("PRODUCT","ACTIVITIES",20150911)
+
+getReduction("PRODUCT","INSURANCE",20150912)
+getReduction("PRODUCT","TRANSFERS",20150912)
+getReduction("PRODUCT","ACTIVITIES",20150912)
+
+getReduction("PRODUCT","INSURANCE",20150913)
+getReduction("PRODUCT","TRANSFERS",20150913)
+getReduction("PRODUCT","ACTIVITIES",20150913)
+
+getReduction("PRODUCT","INSURANCE",20150914)
+getReduction("PRODUCT","TRANSFERS",20150914)
+getReduction("PRODUCT","ACTIVITIES",20150914)
+
+getReduction("PRODUCT","INSURANCE",20150915)
+getReduction("PRODUCT","TRANSFERS",20150915)
+getReduction("PRODUCT","ACTIVITIES",20150915)
+
+getReduction("PRODUCT","INSURANCE",20150916)
+getReduction("PRODUCT","TRANSFERS",20150916)
+getReduction("PRODUCT","ACTIVITIES",20150916)
+
+getReduction("PRODUCT","INSURANCE",20150917)
+getReduction("PRODUCT","TRANSFERS",20150917)
+getReduction("PRODUCT","ACTIVITIES",20150917)
+
+getReduction("PRODUCT","INSURANCE",20150918)
+getReduction("PRODUCT","TRANSFERS",20150918)
+getReduction("PRODUCT","ACTIVITIES",20150918)
+
+getReduction("PRODUCT","INSURANCE",20150919)
+getReduction("PRODUCT","TRANSFERS",20150919)
+getReduction("PRODUCT","ACTIVITIES",20150919)
+
+getReduction("PRODUCT","INSURANCE",20150920)
+getReduction("PRODUCT","TRANSFERS",20150920)
+getReduction("PRODUCT","ACTIVITIES",20150920)
+
+getReduction("PRODUCT","INSURANCE",20150921)
+getReduction("PRODUCT","TRANSFERS",20150921)
+getReduction("PRODUCT","ACTIVITIES",20150921)
+
+getReduction("PRODUCT","INSURANCE",20150922)
+getReduction("PRODUCT","TRANSFERS",20150922)
+getReduction("PRODUCT","ACTIVITIES",20150922)
+
+getReduction("PRODUCT","INSURANCE",20150924)
+getReduction("PRODUCT","TRANSFERS",20150924)
+getReduction("PRODUCT","ACTIVITIES",20150924)
+
+getReduction("PRODUCT","INSURANCE",20150925)
+getReduction("PRODUCT","TRANSFERS",20150925)
+getReduction("PRODUCT","ACTIVITIES",20150925)
+
+getReduction("PRODUCT","INSURANCE",20150926)
+getReduction("PRODUCT","TRANSFERS",20150926)
+getReduction("PRODUCT","ACTIVITIES",20150926)
+
+getReduction("PRODUCT","INSURANCE",20150927)
+getReduction("PRODUCT","TRANSFERS",20150927)
+getReduction("PRODUCT","ACTIVITIES",20150927)
+
+getReduction("PRODUCT","INSURANCE",20150928)
+getReduction("PRODUCT","TRANSFERS",20150928)
+getReduction("PRODUCT","ACTIVITIES",20150928)
+
+getReduction("PRODUCT","INSURANCE",20150929)
+getReduction("PRODUCT","TRANSFERS",20150929)
+getReduction("PRODUCT","ACTIVITIES",20150929)
+
+getReduction("PRODUCT","INSURANCE",20150930)
+getReduction("PRODUCT","TRANSFERS",20150930)
+getReduction("PRODUCT","ACTIVITIES",20150930)
+
+getReduction("PRODUCT","INSURANCE",20150931)
+getReduction("PRODUCT","TRANSFERS",20150931)
+getReduction("PRODUCT","ACTIVITIES",20150931)
+
+
+#### File Insurance ####
+# Levantamos la data. aclare que no los traiga como factors porque me salian muchos warnings al hacer el rbind
+ins_1 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150901-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_2 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150902-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_3 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150903-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_4 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150904-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_5 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150905-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_6 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150906-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_7 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150907-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_8 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150908-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_9 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150909-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_10 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150910-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_11 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150911-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_12 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150912-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_13 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150913-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_14 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150914-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_15 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150915-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_16 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150916-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_17 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150917-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_18 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150918-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_19 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150919-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_20 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150920-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_21 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150921-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_22 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150922-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_23 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150923-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_24 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150924-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_25 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150925-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_26 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150926-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_27 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150927-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_28 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150928-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_29 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150929-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_30 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150930-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+ins_31 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150931-DATA_UPA_PRODUCT_INSURANCE.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+
+#une todo lo que empieza en ins_
+ins <- do.call(rbind, mget(ls(pattern = "^ins_[0-9]+$")))
+
+#borra todo lo que empieza en ins_
+rm(list=names(mget(ls(pattern = "^ins_[0-9]+$"))))
+
+#### File Transfers ####
+# Levantamos la data. aclare que no los traiga como factors porque me salian muchos warnings al hacer el rbind
+tra_1 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150901-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_2 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150902-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_3 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150903-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_4 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150904-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_5 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150905-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_6 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150906-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_7 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150907-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_8 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150908-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_9 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150909-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_10 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150910-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_11 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150911-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_12 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150912-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_13 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150913-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_14 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150914-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_15 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150915-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_16 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150916-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_17 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150917-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_18 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150918-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_19 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150919-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_20 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150920-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_21 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150921-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_22 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150922-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_23 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150923-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_24 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150924-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_25 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150925-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_26 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150926-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_27 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150927-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_28 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150928-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_29 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150929-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_30 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150930-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+tra_31 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150931-DATA_UPA_PRODUCT_TRANSFERS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+
+#une todo lo que empieza en tra_
+tra <- do.call(rbind, mget(ls(pattern = "^tra_[0-9]+$")))
+
+#borra todo lo que empieza en tra_
+rm(list=names(mget(ls(pattern = "^tra_[0-9]+$"))))
+
+
+#### File Activities ####
+# Levantamos la data. aclare que no los traiga como factors porque me salian muchos warnings al hacer el rbind
+act_1 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150901-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_2 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150902-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_3 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150903-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_4 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150904-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_5 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150905-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_6 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150906-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_7 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150907-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_8 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150908-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_9 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150909-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_10 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150910-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_11 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150911-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_12 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150912-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_13 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150913-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_14 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150914-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_15 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150915-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_16 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150916-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_17 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150917-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_18 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150918-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_19 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150919-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_20 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150920-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_21 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150921-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_22 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150922-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_23 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150923-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_24 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150924-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_25 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150925-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_26 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150926-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_27 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150927-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_28 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150928-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_29 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150929-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_30 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150930-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+act_31 <- read.delim("/home/despegar/rstudio_data/vseminario/Recomendador Activities/20150931-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+
+#une todo lo que empieza en act_
+act <- do.call(rbind, mget(ls(pattern = "^act_[0-9]+$")))
+
+#borra todo lo que empieza en act_
+rm(list=names(mget(ls(pattern = "^act_[0-9]+$"))))
+
+
+actividades <- rbind(act,tra,ins)
+
+
+act.idcro.jul <- subset(actividades, is.na(idcro)==F & idcro!="" )
+act.idcro.jul <- subset(act.idcro.jul,nchar(act.idcro.jul$idcro) == 8)
+act.idcro.jul <- as.data.table(act.idcro.jul)
+act.idcro.jul <- act.idcro.jul[!duplicated(act.idcro.jul[,idcro]),]
+
+save(act.idcro.jul, file="idcrojulio.rda")
+
+act.idcro <- rbind (act.idcro.jul,act.idcro.ago, act.idcro.sep)
