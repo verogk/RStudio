@@ -1,0 +1,71 @@
+##### BAJAR y PREPARAR DATOS #####
+
+#Seteamos la ruta desde donde se van a descargar los archivos
+setwd("/home/despegar/rstudio_data/vseminario/A pedido")
+
+# Descargamos la data
+getReduction("PRODUCT","FLIGHTS",20150714)
+getReduction("PRODUCT","FLIGHTS",20150713)
+
+# Levantamos la data
+flights20150714 <- read.delim("/home/despegar/rstudio_data/vseminario/A pedido/20150714-DATA_UPA_PRODUCT_FLIGHTS.txt", sep="\t", header =T)
+flights20150713 <- read.delim("/home/despegar/rstudio_data/vseminario/A pedido/20150713-DATA_UPA_PRODUCT_FLIGHTS.txt", sep="\t", header =T)
+
+# Unimos las 2 tablas en una, por filas. 
+flights2days <- rbind (flights20150714,flights20150713)
+
+# Me quedo solo con los Search
+flights2days <- subset(flights2days, flow %in% c("SEARCH"))
+
+# saco columnas que no me sirven para que pese mucho menos
+flights2days<- subset(flights2days[,c(1,2,3,5,6,7,10,11,12,13)])
+
+# saco los userid en blanco y los sin tracker, los que no tienen iata de destino y origen y los sources Corporate, Agencias Afiliadas
+flights2days <- subset(flights2days, destino_IATA != "" & origen_IATA != "" & userid != "" 
+                       & source != "Corporate" & source != "AgenciasAfiliadas" & userid != "sem_tracker_user_id" 
+                       & userid != "-------------------------------------------------ed--------------------------------------------o----------------------------"
+                       & userid != "-----------------------------------7" & userid != "--------------479d-a497-6c0b51d79def"
+                       & userid != "--------------4868--------------6845")
+
+#Borro objetos para que no pese demasiado al reanudar la sesion de R Studio
+rm(flights20150714,flights20150713)
+
+#La transformamos a data table
+flights2days <- data.table(flights2days)
+
+#Ordenamos los datos por usuario, IATA de destino
+flights2days$destino_IATA <- as.character(flights2days$destino_IATA)
+
+flights2days <- flights2days[with(flights2days, order(userid,destino_IATA))]
+
+# ahora me quedo con los uniques de las dos columnas y despues saco la proporcion de eso 
+
+#empiezo haciendo una tabla auxiliar para no borrar nada de flights2days
+aux <- subset(flights2days, select=c("userid","destino_IATA"))
+aux <- aux[with(aux, order(userid,destino_IATA))] # en teoria no es necesario zq ya estaba ordenado
+
+# aca me quedo con las combinaciones unicas de usuario y destino
+# un usuario puede tener varios destinos
+aux <- unique(aux)
+nrow(aux)   #me da cuantas busquedas unicas
+
+# puedo hacer una tabla que se quede con los usuarios unicos y contarlos
+unique.users <- aux[with(aux, order(userid,destino_IATA))]
+unique.users <- unique.users[!duplicated(unique.users$userid), ]
+nrow(unique.users)   #me da cuantos usuarios hicieron al menos una busqueda
+
+# luego hacer una tabla con los duplicados. de esa tabla saco los unicos 
+# y seran todos los que hicieron mas de una buqueda. luego los cuento
+twosearchers <- aux[with(aux, order(userid,destino_IATA))]
+twosearchers <- twosearchers[duplicated(twosearchers$userid), ] # aca me quede con todo lo duplicado, todas las veces que aparecen
+twosearchers <- twosearchers[!duplicated(twosearchers$userid), ] # aca me quedo con solo la primera aparicion de los duplicados
+nrow(twosearchers)   #me da cuantos usuarios hicieron mas de una busqueda
+
+# ¿Cuanta gente hizo busquedas para mas de un destino en 48 hs?
+nrow(twosearchers) / nrow(unique.users)
+# Respuesta: 23.4% de las personas (tracker ids hicieron una o más búsquedas 
+# para MAS DE UN DESTINO)
+
+# otra forma de responder seria haciendo un table
+length(which(table(aux$userid) > 1)) / length(which(table(aux$userid) > 0))
+# Respuesta: 23.4% de las personas
