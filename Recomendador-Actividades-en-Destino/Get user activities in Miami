@@ -1,0 +1,168 @@
+##### BAJAR y PREPARAR DATOS DE ACTIVITIES #####
+
+#Seteamos la ruta donde se van a descargar los archivos
+setwd("/home/despegar/rstudio_data/vseminario/Recomendador Activities/")
+
+# Descargamos la data
+getReduction("PRODUCT","ACTIVITIES",20150601)
+getReduction("PRODUCT","ACTIVITIES",20150531)
+getReduction("PRODUCT","ACTIVITIES",20150530)
+getReduction("PRODUCT","ACTIVITIES",20150529)
+getReduction("PRODUCT","ACTIVITIES",20150528)
+getReduction("PRODUCT","ACTIVITIES",20150527)
+getReduction("PRODUCT","ACTIVITIES",20150526)
+getReduction("PRODUCT","ACTIVITIES",20150525)
+getReduction("PRODUCT","ACTIVITIES",20150524)
+getReduction("PRODUCT","ACTIVITIES",20150523)
+getReduction("PRODUCT","ACTIVITIES",20150522)
+getReduction("PRODUCT","ACTIVITIES",20150521)
+getReduction("PRODUCT","ACTIVITIES",20150520)
+getReduction("PRODUCT","ACTIVITIES",20150519)
+getReduction("PRODUCT","ACTIVITIES",20150518)
+getReduction("PRODUCT","ACTIVITIES",20150517)
+getReduction("PRODUCT","ACTIVITIES",20150516)
+getReduction("PRODUCT","ACTIVITIES",20150515)
+getReduction("PRODUCT","ACTIVITIES",20150514)
+getReduction("PRODUCT","ACTIVITIES",20150513)
+getReduction("PRODUCT","ACTIVITIES",20150512)
+getReduction("PRODUCT","ACTIVITIES",20150511)
+getReduction("PRODUCT","ACTIVITIES",20150510)
+getReduction("PRODUCT","ACTIVITIES",20150509)
+getReduction("PRODUCT","ACTIVITIES",20150508)
+getReduction("PRODUCT","ACTIVITIES",20150507)
+getReduction("PRODUCT","ACTIVITIES",20150506)
+getReduction("PRODUCT","ACTIVITIES",20150505)
+getReduction("PRODUCT","ACTIVITIES",20150504)
+
+# Levantamos la data. aclare que no los traiga como factors porque me salian muchos warnings al hacer el rbind
+activities_1 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150504-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_2 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150505-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_3 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150506-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_4 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150507-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_5 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150508-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_6 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150509-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_7 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150510-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_8 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150511-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_9 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150512-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_10 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150513-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_11 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150514-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_12 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150515-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_13 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150516-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_14 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150517-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_15 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150518-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_16 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150519-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_17 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150520-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_18 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150521-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_19 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150522-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_20 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150523-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_21 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150524-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_22 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150525-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_23 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150526-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_24 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150527-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_25 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150528-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_26 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150529-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_27 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150530-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_28 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150531-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+activities_29 <- read.delim("/home/despegar/rstudio_data/vseminario/Get User Activities/20150601-DATA_UPA_PRODUCT_ACTIVITIES.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+
+# Unimos las tablas de cada dia en una, por filas. 
+act30days <- rbind (activities_1, activities_2, activities_3, activities_4, activities_5, activities_6, activities_7, activities_8, activities_9, activities_10, activities_11, 
+                   activities_12, activities_13, activities_14, activities_15, activities_16, activities_17, activities_18, activities_19, activities_20, activities_21, activities_22, 
+                   activities_23, activities_24, activities_25, activities_26, activities_27, activities_28, activities_29)
+
+# saco columnas que no me sirven para que pese mucho 
+act30days <- subset(act30days[,c(1,2,3,4,5,6,7,10,11,12,13,17)])
+
+# Elimino tablas
+rm (activities_1, activities_2, activities_3, activities_4, activities_5, activities_6, activities_7, activities_8, activities_9, activities_10, activities_11, 
+       activities_12, activities_13, activities_14, activities_15, activities_16, activities_17, activities_18, activities_19, activities_20, activities_21, activities_22, 
+       activities_23, activities_24, activities_25, activities_26, activities_27, activities_28, activities_29)
+
+act30days$destino_IATA <- toupper (act30days$destino_IATA)
+  
+##### QUEDE ACA
+
+
+# Iatas asociados con Miami: En la tabla de iatas son los que tienen el administrativeDivisionOid 10664
+load("/home/despegar/rstudio_data/vseminario/datos utiles/info iatas.rda")
+iatas.miami <- subset(iatas.frame, administrativeDivisionOid %in% c(10664))
+
+act30days <- subset(act30days, destino_IATA %in% iatas.miami$iataCode)
+act30days <- subset(act30days, flow %in% "THANKS")
+
+rm(iatas.frame,iatas.miami)
+
+#La transformamos a data table
+act30days <- data.table(act30days)
+
+#Generamos variable timestamp a partir de FECHA y HORA
+#Timestamp esta en segundos
+act30days$timestamp <- with(act30days, paste(FECHA,HORA))
+act30days$timestamp <- gsub("\\.[0-9]{3}","",act30days$timestamp)
+act30days$timestamp <- as.POSIXct(act30days$timestamp, tz="GMT", format= "%Y-%m-%d %H:%M:%S")
+act30days$timestamp <- as.numeric(act30days$timestamp)
+
+#Ordenamos los datos por usuario, timestamp y saco duplicados
+act30days <- act30days[with(act30days, order(userid,timestamp))]
+act30days <- act30days[!duplicated(act30days), ]
+
+#### Funcion Get User Profile####
+source("/home/despegar/rstudio_data/vseminario/datos utiles/funcion get user profile.R")
+
+#### Aplico funcion ####
+UP.sample <- sapply(act30days$userid, getUserProfile)
+UP.sample <- as.data.frame(UP.sample)
+
+# traspongo la matriz
+UP.sample <- t(UP.sample[,2:ncol(UP.sample)])
+
+# Nombres de las columnas
+colnames(UP.sample) <- c("userid","Traveler_Type","Theme","Route_Type","Duration_Travel","Purchase_Anticipation","Nivel_Soc","Gender","Age")
+
+# Elimino row names
+row.names(UP.sample) <- NULL
+
+# Matrix a data frame
+UP.sample <- as.data.frame(UP.sample)
+
+# userid as character
+UP.sample$userid <- as.character(UP.sample$userid)
+
+act30days$userid <- as.character(act30days$userid)
+
+# ordeno por userid
+UP.sample <- UP.sample[with(UP.sample, order(userid)), ]
+act30days <- act30days[with(act30days, order(userid)), ]
+
+# saco duplicados
+
+UP.sample <- UP.sample[!duplicated(UP.sample$userid), ]
+
+#### Merge de los datos de activities con los de user profile ####
+
+activityXuser <- merge(act30days, UP.sample, by="userid",all.x=T)
+
+activityXuser <- activityXuser[!duplicated(activityXuser), ]
+
+activityXuser <- data.frame(activityXuser)
+
+write.csv(activityXuser, file = "activityXuser.csv")
+
+#### con los idcro oy a Pentaho, a la tabla fact_producto, para buscar el id de actividad. 
+# El query es:
+# select transaction_code, product_id
+# from fact_producto
+# where transaction_code in (97514712, 97514705, 97514704... SON LOS IDCRO ) 
+# exporto esa tabla a csv y la importo aca:
+
+activids<- read.csv("/home/despegar/rstudio_data/vseminario/Get User Activities/activids.csv", sep=";", header =T)
+
+activityXuser <- data.frame(activityXuser)
+
+activityXuser <- merge(activityXuser, activids, by.x="idcro", by.y="transaction_code",all.x=T)
+
+activityXuser$timestamp <- NULL
+activityXuser$hotel_estrellas <- NULL
+activityXuser$origen_IATA <- NULL
+activityXuser$flow <- NULL
+activityXuser$HORA <- NULL
