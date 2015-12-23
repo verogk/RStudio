@@ -1,0 +1,162 @@
+
+# saco columnas que no me sirven para que pese mucho 
+names(act.idcro)
+act.idcro <- subset(act.idcro, select=c(1,2,3,4,5,6,7,11,12,13,19))
+
+# Si el event es "crosselingoffer" y el flow es "EVENT-SELECTION", son trackeos de UPA
+# que describen cuando una persona comproun product (ej: vuelo) e hizo click en la 
+# oferta de actividad que se le mostro por xselling -> los filtro
+act.idcro <- subset(act.idcro, event != "crosssellingoffer")
+
+# Iatas asociados con Miami: En la tabla de iatas son los que tienen el administrativeDivisionOid 10664
+act.idcro$destino_IATA <- toupper (act.idcro$destino_IATA)
+
+load("/home/despegar/rstudio_data/vseminario/datos utiles/info iatas.rda")
+
+iatas.miami <- subset(iatas.frame, administrativeDivisionOid %in% c(10664))
+
+act.idcro <- subset(act.idcro, destino_IATA %in% iatas.miami$iataCode)
+
+rm(iatas.frame,iatas.miami)
+
+#La transformamos a data table
+act.idcro <- data.table(act.idcro)
+
+#Generamos variable timestamp a partir de FECHA y HORA
+#Timestamp esta en segundos
+act.idcro$timestamp <- with(act.idcro, paste(FECHA,HORA))
+act.idcro$timestamp <- gsub("\\.[0-9]{3}","",act.idcro$timestamp)
+act.idcro$timestamp <- as.POSIXct(act.idcro$timestamp, tz="GMT", format= "%Y-%m-%d %H:%M:%S")
+act.idcro$timestamp <- as.numeric(act.idcro$timestamp)
+
+#Ordenamos los datos por usuario, timestamp y saco duplicados de idcro, 
+# que deberian ser compras unicas (no deberia haber duplicados)
+act.idcro <- act.idcro[with(act.idcro, order(userid,timestamp))]
+act.idcro <- act.idcro[!duplicated(act.idcro), ]
+
+#### Funcion Get User Profile####
+# esta funcion me va a decir cual es el perfil de cada usuario en cada compra.
+# un usuario puede haber hecho mas de una compra. puedo no tener datos para algun usuario.
+source("/home/despegar/rstudio_data/vseminario/Funciones/funcion get user profile.R")
+
+# Aplico funcion
+clus <- makeCluster(10)
+clusterExport(clus, list("getUserProfile","fromJSON", "getURL"))
+ups <- parLapply (clus, act.idcro$userid, getUserProfile )
+stopCluster(clus)
+
+#ups <- sapply(act.idcro[1:5000,]$userid, getUserProfile)
+ups <- as.data.frame(ups)
+
+# traspongo la matriz
+ups <- t(ups[,2:ncol(ups)])
+
+# Nombres de las columnas
+colnames(ups) <- c("userid","Traveler_Type","Theme","Route_Type","Duration_Travel","Purchase_Anticipation","Nivel_Soc","Gender","Age")
+
+# Elimino row names
+row.names(ups) <- NULL
+
+# Matrix a data frame
+ups <- as.data.frame(ups)
+
+# userid as character
+ups$userid <- as.character(ups$userid)
+
+act.idcro$userid <- as.character(act.idcro$userid)
+
+# ordeno por userid
+ups <- ups[with(ups, order(userid)), ]
+act.idcro <- act.idcro[with(act.idcro, order(userid)), ]
+
+# saco duplicados y me quedo con los ids que AL MENOS tengan algun campo del UP 
+ups <- ups[!duplicated(ups$userid), ]
+
+# me guardo a la gente para la que no tengo ningun campo de UP
+no.up <- subset(ups, is.na(Traveler_Type)==T & is.na(Theme)==T &
+                         is.na(Route_Type)==T & is.na(Duration_Travel)==T &
+                         is.na(Purchase_Anticipation)==T & is.na(Nivel_Soc)==T &
+                         is.na(Gender)==T & is.na(Age)==T )
+
+ups <- subset(ups, is.na(Traveler_Type)==F | is.na(Theme)==F |
+                is.na(Route_Type)==F | is.na(Duration_Travel)==F |
+                is.na(Purchase_Anticipation)==F | is.na(Nivel_Soc)==F |
+                is.na(Gender)==F | is.na(Age)==F )
+
+#### Merge de los datos de activities con los de user profile ####
+activityXuser <- merge(act.idcro, ups, by="userid")
+#activityXuser <- activityXuser[!duplicated(activityXuser), ]
+activityXuser <- data.frame(activityXuser)
+
+#### Funcion Get Activity data####
+source("/home/despegar/rstudio_data/vseminario/Funciones/funcion get activity data.R")
+#saco uniques de las actividades
+#actids <- act.idcro[!duplicated(act.idcro$idcro), ]
+
+# Se aplica asi:
+clus <- makeCluster(10)
+clusterExport(clus, list("getActivityData","fromJSON", "getURL", "as.Date", 
+                         "as.POSIXct", "strptime", "as.character", "curlHandle"))
+actdata <- parLapply (clus, activityXuser$idcro,getActivityData)
+stopCluster(clus)
+
+actdata <- as.data.frame(actdata)
+
+# traspongo la matriz
+actdata <- t(actdata[,1:ncol(actdata)])
+actdata <- as.data.frame(actdata)
+rownames(actdata) <- NULL
+
+actdata$ci <- as.Date(as.POSIXct(strptime(as.character(actdata$ci), tz="GMT", "%Y-%m-%dT%H:%M:%SZ")), format = "%Y/%m/%d")
+actdata$co <- as.Date(as.POSIXct(strptime(as.character(actdata$co), tz="GMT", "%Y-%m-%dT%H:%M:%SZ")), format = "%Y/%m/%d")
+actdata$booking_date <- as.Date(as.POSIXct(strptime(as.character(actdata$booking_date), tz="GMT", "%Y-%m-%dT%H:%M:%SZ")), format = "%Y/%m/%d")
+
+# exclude variables v1, v2, v3
+excl <- names(activityXuser) %in% c("FECHA", "HORA", "ci", "co", "flow", "source", "event") 
+activityXuser <- activityXuser[!excl]
+
+#### Merge de los user profiles con la data de activities ####
+activityXuser <- merge(activityXuser, actdata, by="idcro")
+activityXuser <- activityXuser[!duplicated(activityXuser), ]
+activityXuser <- data.frame(activityXuser)
+
+
+
+####VIEJO####
+write.csv(activityXuser, file = "activityXuser.csv")
+
+#### con los idcro voy a Pentaho, a la tabla fact_producto, para buscar el id de actividad. 
+# El query es:
+# select transaction_code, product_id
+# from fact_producto
+# where transaction_code in (97514712, 97514705, 97514704... SON LOS IDCRO ) 
+# exporto esa tabla a csv y la importo aca:
+
+activids<- read.csv("/home/despegar/rstudio_data/vseminario/Get User Activities/activids.csv", sep=";", header =T)
+
+activityXuser <- data.frame(activityXuser)
+
+activityXuser <- merge(activityXuser, activids, by.x="idcro", by.y="transaction_code",all.x=T)
+
+activityXuser$timestamp <- NULL
+activityXuser$hotel_estrellas <- NULL
+activityXuser$origen_IATA <- NULL
+activityXuser$flow <- NULL
+activityXuser$HORA <- NULL
+
+
+
+
+
+
+actdata$sw <- ifelse(regexpr("SeaWorld", actdata$activity_name)>0 | regexpr("Sea World", actdata$activity_name)>0,
+                            "Seaworld","otro")
+
+
+### comprarle chocolates a Rama
+
+
+### Flor es lo mas
+
+
+### Jorge es batman
