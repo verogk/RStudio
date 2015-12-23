@@ -1,0 +1,20 @@
+setwd("/home/despegar/rstudio_data/vseminario/Beer/")
+
+dataids <- read.delim("/home/despegar/rstudio_data/vseminario/Beer/beerroma2.csv", sep=",", header =T)
+
+source("/home/despegar/rstudio_data/vseminario/Funciones/funcion get flight transaction data.R")
+
+curlHandle = getCurlHandle()
+alldata <- lapply(dataids,"data.id"],function(x) getFlightTransactionData(x, curlHandle))
+
+alldata <- as.data.frame(alldata)
+# traspongo la matriz
+alldata <- t(alldata[,1:ncol(alldata)])
+datawona <- as.data.frame(alldata[complete.cases(alldata[,"id"]),])
+
+
+beerdata <- read.delim("/home/despegar/rstudio_data/vseminario/Beer/results (38).csv", sep=",", header =T)
+
+beer.roma <- merge(beerdata, datawona, by.x="data.id", by.y="id", all.x=T)
+
+write.csv(beer.roma, file = "beerroma2.csv")
