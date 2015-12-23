@@ -1,0 +1,181 @@
+##### BAJAR y PREPARAR DATOS #####
+
+#Seteamos la ruta dde se van a descargar los archivitos
+setwd("/home/despegar/rstudio_data/vseminario")
+
+# Descargamos la data
+getReduction("PRODUCT","HOTELS",20150426)
+getReduction("PRODUCT","HOTELS",20150425)
+getReduction("PRODUCT","HOTELS",20150424)
+getReduction("PRODUCT","HOTELS",20150423)
+getReduction("PRODUCT","HOTELS",20150422)
+getReduction("PRODUCT","HOTELS",20150421)
+getReduction("PRODUCT","HOTELS",20150420)
+
+FLIGHTS CARS PACKAGES
+
+# Levantamos la data
+hotels_20_04 <- read.delim("/home/despegar/rstudio_data/vseminario/20150420-DATA_UPA_PRODUCT_HOTELS.txt", sep="\t", header =T)
+
+# para ahorrar tiempo podria decirle la clase de cada columna de antemano. 
+# creo la variable classes con la clase de cada columna. 
+# luego para los siguientes "read.delim" especifico que colClasses = classes.
+classes <- sapply(hotels_20_04, class)
+hotels_21_04 <- read.delim("/home/despegar/rstudio_data/vseminario/20150421-DATA_UPA_PRODUCT_HOTELS.txt", sep="\t", header =T, colClasses = classes)
+hotels_22_04 <- read.delim("/home/despegar/rstudio_data/vseminario/20150422-DATA_UPA_PRODUCT_HOTELS.txt", sep="\t", header =T, colClasses = classes)
+hotels_23_04 <- read.delim("/home/despegar/rstudio_data/vseminario/20150423-DATA_UPA_PRODUCT_HOTELS.txt", sep="\t", header =T, colClasses = classes)
+hotels_24_04 <- read.delim("/home/despegar/rstudio_data/vseminario/20150424-DATA_UPA_PRODUCT_HOTELS.txt", sep="\t", header =T, colClasses = classes)
+hotels_25_04 <- read.delim("/home/despegar/rstudio_data/vseminario/20150425-DATA_UPA_PRODUCT_HOTELS.txt", sep="\t", header =T, colClasses = classes)
+hotels_26_04 <- read.delim("/home/despegar/rstudio_data/vseminario/20150426-DATA_UPA_PRODUCT_HOTELS.txt", sep="\t", header =T, colClasses = classes)
+
+# saco columnas que no me sirven para que pese mucho menos
+hotels_20_04 <- subset(hotels_20_04[,c(1,2,3,5,6,7,12,13,14)])
+hotels_21_04 <- subset(hotels_21_04[,c(1,2,3,5,6,7,12,13,14)])
+hotels_22_04 <- subset(hotels_22_04[,c(1,2,3,5,6,7,12,13,14)])
+hotels_23_04 <- subset(hotels_23_04[,c(1,2,3,5,6,7,12,13,14)])
+hotels_24_04 <- subset(hotels_24_04[,c(1,2,3,5,6,7,12,13,14)])
+hotels_25_04 <- subset(hotels_25_04[,c(1,2,3,5,6,7,12,13,14)])
+hotels_26_04 <- subset(hotels_26_04[,c(1,2,3,5,6,7,12,13,14)])
+
+# Unimos las 7 tablas en una, por filas. 
+hotels7days <- rbind (hotels_20_04, hotels_21_04, hotels_22_04, hotels_23_04, hotels_24_04, hotels_25_04, hotels_26_04 )
+
+# filtro todo lo que no sea Search, CO, Details o Thanks
+hotels7days <- subset(hotels7days, flow %in% c("CHECKOUT","DETAIL","DETAILS","SEARCH","THANKS"))
+
+# saco los userid en blanco y los sin tracker, y los sources Corporate, Agencias Afiliadas
+hotels7days <- subset(hotels7days, userid != "" & source != "Corporate" & source != "AgenciasAfiliadas" & userid != "sem_tracker_user_id")
+
+# Borro objetos para que no pese demasiado al reanudar la sesion de R Studio
+rm(hotels_20_04, hotels_21_04, hotels_22_04, hotels_23_04, hotels_24_04, hotels_25_04, hotels_26_04)
+
+#La transformamos a data table
+hotels7days <- data.table(hotels7days)
+
+# Cambio DETAILS por DETAIL para que sea lo mismo
+hotels7days$flow <- gsub("DETAILS", "DETAIL", hotels7days$flow)
+
+#Generamos variable timestamp a partir de FECHA y HORA
+#Timestamp esta en segundos
+hotels7days$timestamp <- with(hotels7days, paste(FECHA,HORA))
+hotels7days$timestamp <- gsub("\\.[0-9]{3}","",hotels7days$timestamp)
+hotels7days$timestamp <- as.POSIXct(hotels7days$timestamp, tz="GMT", format= "%Y-%m-%d %H:%M:%S")
+hotels7days$timestamp <- as.numeric(hotels7days$timestamp)
+
+#Ordenamos los datos por usuario, timestamp
+hotels7days <- hotels7days[with(hotels7days, order(userid,timestamp))]
+
+
+#### Sesiones Matias ####
+
+# Agregamos nro. de sesion a la tabla hotels7days 
+# 1. Ponemos un nro. que indica el nro. de sesion por userid (con cada nuevo userid reinicia en 0)
+hotels7days[,action.id:=rank(timestamp),list(userid)]
+
+# 2. Aca se hacen dos pasos en uno. Es como si creara un hotels7days.auxiliar que tiene userid,
+# ...una variable igual a timestamp llamada timestamp2, y un action.id que es igual al de la tabla
+# ...hotels7days pero corrido un lugar. Entonces hago un merge de esa tabla con hotels7days 
+# ...pidiendo que coincidan los userid y action.id con la variable que esta action.id corrida una fila. 
+hotels7days = merge(hotels7days,hotels7days[,list(userid,timestamp2=timestamp,action.id=action.id+1)],by=c("userid","action.id"),all.x=T)
+hotels7days[,time.dif:=timestamp-timestamp2]
+hotels7days[,new.session:=ifelse((timestamp-timestamp2>1800)|(is.na(timestamp2)),1,0)]
+hotels7days[,session.id:=cumsum(new.session),by=list(userid)]
+
+# Antes del pivot table deberia separar sesiones. Lo hago con una variable userid.session que mergee userid"-"new.session
+hotels7days$user.session <- paste(hotels7days$userid, hotels7days$session.id, sep = " _ ")
+
+# Elimino userid que empieza en ! 
+hotels7days <- subset(hotels7days, !grepl("!", hotels7days$userid))
+
+#### Filtro por pais ####
+
+# Argentina 
+
+hotelsAR <- subset(hotels7days, country %in% c("AR"))
+
+# Pivot Table en R
+hflowsAR <- dcast(data = hotelsAR, formula = user.session ~ flow, fun.aggregate = length, value.var = "country")
+
+# Filtro solo las que llegaron a comprar
+hflowsAR.tx <- subset(hflowsAR, THANKS > 0)
+
+# CHECKOUT, DETAIL Y SEARCH divididas por THANKS 
+hflowsAR.tx$CHECKOUT.per.tx <- hflowsAR.tx$CHECKOUT / hflowsAR.tx$THANKS 
+hflowsAR.tx$DETAIL.per.tx <- hflowsAR.tx$DETAIL / hflowsAR.tx$THANKS 
+hflowsAR.tx$SEARCH.per.tx <- hflowsAR.tx$SEARCH / hflowsAR.tx$THANKS 
+
+hflowsAR.tx$num.session <- gsub("^.*_", "", hflowsAR.tx$user.session) 
+
+# Creo tablas de frecuencia
+CO.freqAR <- table(hflowsAR.tx$CHECKOUT.per.tx)
+SE.freqAR <- table(hflowsAR.tx$SEARCH.per.tx)
+DE.freqAR <- table(hflowsAR.tx$DETAIL.per.tx)
+
+
+# Brasil 
+
+hotelsBR <- subset(hotels7days, country %in% c("BR"))
+
+# Pivot Table en R
+hflowsBR <- dcast(data = hotelsBR, formula = user.session ~ flow, fun.aggregate = length, value.var = "country")
+
+# Filtro solo las que llegaron a comprar
+hflowsBR.tx <- subset(hflowsBR, THANKS > 0)
+
+# CHECKOUT, DETAIL Y SEARCH divididas por THANKS 
+hflowsBR.tx$CHECKOUT.per.tx <- hflowsBR.tx$CHECKOUT / hflowsBR.tx$THANKS 
+hflowsBR.tx$DETAIL.per.tx <- hflowsBR.tx$DETAIL / hflowsBR.tx$THANKS 
+hflowsBR.tx$SEARCH.per.tx <- hflowsBR.tx$SEARCH / hflowsBR.tx$THANKS 
+
+hflowsBR.tx$num.session <- gsub("^.*_", "", hflowsBR.tx$user.session) 
+
+# Creo tablas de frecuencia
+CO.freqBR <- table(hflowsBR.tx$CHECKOUT.per.tx)
+SE.freqBR <- table(hflowsBR.tx$SEARCH.per.tx)
+DE.freqBR <- table(hflowsBR.tx$DETAIL.per.tx)
+
+
+# Mexico 
+
+hotelsMX <- subset(hotels7days, country %in% c("MX"))
+
+# Pivot Table en R
+hflowsMX <- dcast(data = hotelsMX, formula = user.session ~ flow, fun.aggregate = length, value.var = "country")
+
+# Filtro solo las que llegaron a comprar
+hflowsMX.tx <- subset(hflowsMX, THANKS > 0)
+
+# CHECKOUT, DETAIL Y SEARCH divididas por THANKS 
+hflowsMX.tx$CHECKOUT.per.tx <- hflowsMX.tx$CHECKOUT / hflowsMX.tx$THANKS 
+hflowsMX.tx$DETAIL.per.tx <- hflowsMX.tx$DETAIL / hflowsMX.tx$THANKS 
+hflowsMX.tx$SEARCH.per.tx <- hflowsMX.tx$SEARCH / hflowsMX.tx$THANKS 
+
+hflowsMX.tx$num.session <- gsub("^.*_", "", hflowsMX.tx$user.session) 
+
+# Creo tablas de frecuencia
+CO.freqMX <- table(hflowsMX.tx$CHECKOUT.per.tx)
+SE.freqMX <- table(hflowsMX.tx$SEARCH.per.tx)
+DE.freqMX <- table(hflowsMX.tx$DETAIL.per.tx)
+
+
+# Resto del Mundo 
+hotelsRW <- subset(hotels7days, !country %in% c("AR", "BR", "MX"))
+
+# Pivot Table en R
+hflowsRW <- dcast(data = hotelsRW, formula = user.session ~ flow, fun.aggregate = length, value.var = "country")
+
+# Filtro solo las que llegaron a comprar
+hflowsRW.tx <- subset(hflowsRW, THANKS > 0)
+
+# CHECKOUT, DETAIL Y SEARCH divididas por THANKS 
+hflowsRW.tx$CHECKOUT.per.tx <- hflowsRW.tx$CHECKOUT / hflowsRW.tx$THANKS 
+hflowsRW.tx$DETAIL.per.tx <- hflowsRW.tx$DETAIL / hflowsRW.tx$THANKS 
+hflowsRW.tx$SEARCH.per.tx <- hflowsRW.tx$SEARCH / hflowsRW.tx$THANKS 
+
+hflowsRW.tx$num.session <- gsub("^.*_", "", hflowsRW.tx$user.session) 
+
+Creo tablas de frecuencia
+CO.freqRW <- table(hflowsRW.tx$CHECKOUT.per.tx)
+SE.freqRW <- table(hflowsRW.tx$SEARCH.per.tx)
+DE.freqRW <- table(hflowsRW.tx$DETAIL.per.tx)
+
