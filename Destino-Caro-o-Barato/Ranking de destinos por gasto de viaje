@@ -1,0 +1,685 @@
+# voy a hacer tablas con 3 niveles de desagregacion
+# - nivel mas completo: destinos para los cuales hay n suficiente 
+#   para clasificar por traveler Y los
+# - nivel 2: destinos para los cuales hay n suficiente 
+#   para clasificar por traveler O los
+# - nivel 3: destinos para los cuales NO hay n suficiente 
+#   para clasificar por traveler O los entonces saco un promedio 
+#   general de gasto por iata
+
+#### Levantar data y Grep de texto ####
+setwd("/home/despegar/rstudio_data/vseminario/Destino Caro o Barato/")
+
+# Levantamos la data de reviews
+reviews15 <- read.table("/home/despegar/rstudio_data/vseminario/Destino Caro o Barato/cityReviewExport-2015.csv", sep=",", header =T)
+reviews14 <- read.table("/home/despegar/rstudio_data/vseminario/Destino Caro o Barato/cityReviewExport-2014.csv", sep=",", header =T)
+reviews <- rbind(reviews14, reviews15)
+setnames(reviews, c("id", "item.id", "review.date", "lan", "geoid", "email", "description", "idcro"))
+rm(reviews14, reviews15)
+
+reviews$id <- as.character(reviews$id)
+reviews$item.id <- as.numeric(as.character(reviews$item.id))
+reviews$review.date <- as.Date(as.POSIXct(reviews$review.date ,tz="GMT"))
+reviews$geoid <- as.integer(reviews$geoid)
+reviews$email <- as.character(reviews$email)
+reviews$idcro <- as.integer(reviews$idcro)
+reviews$description <- as.character(reviews$description)
+
+# saco los corchetes y espacios y comillas 
+#y convierto a lista con los elementos separados por ","
+reviews$description <- gsub("\\[", "", reviews$description)
+reviews$description <- gsub("\\]", "", reviews$description)
+reviews$description <- gsub(" ", "", reviews$description)
+reviews$description <- gsub("\"", "", reviews$description)
+reviews$description <- strsplit(reviews$description, ",")
+
+# grep va a buscar cual de los elementos de la lista contiene "usd" y lo va a traer
+reviews$rgprecios <- lapply(reviews$description, function(x) grep("usd",x,value=TRUE))
+reviews$rgprecios <- gsub("usd", "", reviews$rgprecios)
+reviews$rgprecios <- gsub("less", "", reviews$rgprecios)
+reviews$rgprecios <- gsub("more", "", reviews$rgprecios)
+
+# me quedo un intervalo de precios. separo en lista y saco el promedio
+reviews$rgprecios <- strsplit(reviews$rgprecios, "or")
+reviews$avgprecios <- lapply(reviews$rgprecios, function(x) as.numeric(x))
+reviews$avgprecios <- ifelse(reviews$rgprecios=="20", 15, 
+                            ifelse(reviews$rgprecios=="600", 700, lapply(reviews$avgprecios, mean)))
+reviews$avgprecios <- as.numeric(reviews$avgprecios)
+
+# clasifico traveler type
+# grep va a buscar cual de los elementos de la lista contiene "usd" y lo va a traer
+reviews$traveler <- lapply(reviews$description, function(x) grep("family|couple|friends|single|business",x,value=TRUE))
+reviews$traveler <- as.character(reviews$traveler)
+reviews$traveler <- ifelse(! reviews$traveler %in% c("businessTrip","couple","family","friends","singles"),NA, reviews$traveler)
+reviews$traveler <- gsub("businessTrip", "business", reviews$traveler)
+
+# grep va a buscar cual de los elementos de la lista contiene "day" y lo va a traer
+reviews$stay.d <- lapply(reviews$description, function(x) grep("day",x,value=TRUE))
+reviews$stay.d <- gsub("day", "", reviews$stay.d)
+# me quedo un intervalo de dias. separo en lista y saco el promedio
+reviews$stay.d <- strsplit(reviews$stay.d, "-")
+reviews$stay.d <- lapply(reviews$stay.d, function(x) as.numeric(x))
+
+# grep va a buscar cual de los elementos de la lista contiene "week" y lo va a traer
+reviews$stay.w <- lapply(reviews$description, function(x) grep("eek",x,value=TRUE))
+reviews$stay.w <- gsub("Week|weeks", "", reviews$stay.w)
+reviews$stay.w <- as.numeric(reviews$stay.w)
+
+# grep va a buscar cual de los elementos de la lista contiene "month" y lo va a traer
+reviews$stay.m <- lapply(reviews$description, function(x) grep("month",x,value=TRUE))
+reviews$stay.m <- ifelse(reviews$stay.m=="1month", 1,
+                          ifelse(reviews$stay.m=="morethanamonth", 1.5, NA))
+
+# calculo la estadia promedio
+reviews$avgstay <- ifelse(is.na(reviews$stay.w)==F, reviews$stay.w*7,
+                          ifelse(is.na(reviews$stay.m)==F,reviews$stay.m*30, lapply(reviews$stay.d, mean)))
+reviews$avgstay <- as.numeric(reviews$avgstay)
+
+reviews$stay.d <- NULL
+reviews$stay.w <- NULL
+reviews$stay.m <- NULL
+reviews$rgprecios <- NULL
+
+
+### GEO data ####
+# tablita con id de destino, IATA, latitud, longitud
+geo.json <- fromJSON(file="http://10.2.7.6/geo-services-web/service/webcontext/city/simplified/allCities")$data
+geo.unlist <- unlist(geo.json)
+
+geo.colnames <- c("oid","iataCode","description.ES","code","countryOid","latitude","longitude")
+geo.columns <- c("oid","iataCode","description.ES","code","countryOid","^latitude$","^longitude$")
+geo.dt <- data.frame(tabulateJSON(geo.unlist,"oid", geo.columns, geo.colnames))
+geo.dt[,c("oid","iataCode")] <- apply(geo.dt[,c("oid","iataCode")], 2, function(x) as.character(x))
+
+rm(geo.colnames, geo.columns, geo.json, geo.unlist)
+
+#hago merge para saber el iata que corresponde al geoid
+reviews <- merge(reviews, geo.dt[,c("oid","iataCode")], by.x="geoid", by.y="oid", all.x=T)
+
+rm(geo.dt)
+
+
+#### Precios de VUELOS de Qlikview ####
+# En el query de QV busque vuelos saliendo de los aeropuertos 
+#  -Brasil SAO RIO <- me quedo con el vuelo mas barato de los dos aeropuertos
+#  -Argentina EZE BUE <- me quedo con el vuelo mas barato de los dos aeropuertos
+#  -Mexico MEX
+#  -Colombia BOG
+#  -Chile SCL
+#  -Peru LIM
+#  -Ecuador UIO
+vuelosqv <- read.table("/home/despegar/rstudio_data/vseminario/Destino Caro o Barato/flightprices.csv", sep=",", header =T)
+setnames(vuelosqv, c("mes","pais","destino.ciudad","iata","tipo.vuelo", "usd.x.pers"))
+vuelosqv$iata <- as.character(vuelosqv$iata)
+vuelosqv$pais <- as.character(vuelosqv$pais)
+vuelosqv$usd.x.pers <- as.numeric(as.character(vuelosqv$usd.x.pers))
+vuelos.avg.anual <- as.data.frame(dcast(vuelosqv, iata ~ pais, value.var= "usd.x.pers", fun.aggregate = mean, na.rm = TRUE,  fill=0))
+vuelos.avg.anual <- melt(vuelos.avg.anual, id.vars = c("iata"))
+vuelos.avg.anual$value <- ifelse(vuelos.avg.anual$value== 0, NA, vuelos.avg.anual$value )
+vuelos.avg.anual <- subset(vuelos.avg.anual, is.na(value)==F)
+setnames(vuelos.avg.anual, c("iata","pais.origen", "flight.usd"))
+
+#### Precios de HOTELES de Qlikview ####
+hotelprice <- read.table("/home/despegar/rstudio_data/vseminario/Destino Caro o Barato/hotelprices2.csv", sep=",", header =T)
+hotel.avg.anual <- as.data.frame(dcast(hotelprice, iata ~ pais, value.var= "gb.roomnight", fun.aggregate = mean, na.rm = TRUE,  fill=0))
+hotel.avg.anual <- melt(hotel.avg.anual, id.vars = c("iata"))
+hotel.avg.anual$value <- ifelse(hotel.avg.anual$value== 0, NA, hotel.avg.anual$value )
+hotel.avg.anual <- subset(hotel.avg.anual, is.na(value)==F)
+setnames(hotel.avg.anual, c("iata","pais.origen", "one.day.hotel"))
+
+hotel.avg.anual$five.day.hotel <- hotel.avg.anual$one.day.hotel*5
+
+
+####2do Nivel: COSTO POR TRAVELER TYPE ####
+# Voy a hacer una tablita por traveler type, con el costo de un viaje de 5 dias para diferentes origenes.
+
+# cuantos reviews tengo de cada traveler type para cada destino??
+cant.reviews.x.traveler <- as.data.frame(dcast(reviews, iataCode ~ traveler , value.var= "avgprecios", fun.aggregate = length))
+
+#me quedo solo con los destinos para los que tengo mas de 10 reviews por traveler type
+singles.keep <- as.data.frame(subset(cant.reviews.x.traveler, cant.reviews.x.traveler$singles >=10)$iataCode)
+setnames(singles.keep, "iataCode")
+couple.keep <- as.data.frame(subset(cant.reviews.x.traveler, cant.reviews.x.traveler$couple >=10)$iataCode)
+setnames(couple.keep, "iataCode")
+family.keep <- as.data.frame(subset(cant.reviews.x.traveler, cant.reviews.x.traveler$family >=10)$iataCode)
+setnames(family.keep, "iataCode")
+business.keep <- as.data.frame(subset(cant.reviews.x.traveler, cant.reviews.x.traveler$business >=10)$iataCode)
+setnames(business.keep, "iataCode")
+friends.keep <- as.data.frame(subset(cant.reviews.x.traveler, cant.reviews.x.traveler$friends >=10)$iataCode)
+setnames(friends.keep, "iataCode")
+
+rm(cant.reviews.x.traveler)
+
+singles.gasto.prom <- subset(reviews, iataCode %in% singles.keep$iataCode & traveler=="singles")
+friends.gasto.prom <- subset(reviews, iataCode %in% friends.keep$iataCode & traveler=="friends")
+couple.gasto.prom <- subset(reviews, iataCode %in% couple.keep$iataCode & traveler=="couple")
+family.gasto.prom <- subset(reviews, iataCode %in% family.keep$iataCode & traveler=="family")
+business.gasto.prom <- subset(reviews, iataCode %in% business.keep$iataCode & traveler=="business")
+
+rm(business.keep, singles.keep, couple.keep, family.keep, friends.keep)
+
+singles.gasto.prom <- as.data.frame(dcast(singles.gasto.prom, iataCode ~ traveler , value.var= "avgprecios", fun.aggregate = mean, na.rm = TRUE,  fill=0))
+friends.gasto.prom <- as.data.frame(dcast(friends.gasto.prom, iataCode ~ traveler , value.var= "avgprecios", fun.aggregate = mean, na.rm = TRUE,  fill=0))
+couple.gasto.prom <- as.data.frame(dcast(couple.gasto.prom, iataCode ~ traveler , value.var= "avgprecios", fun.aggregate = mean, na.rm = TRUE,  fill=0))
+family.gasto.prom <- as.data.frame(dcast(family.gasto.prom, iataCode ~ traveler , value.var= "avgprecios", fun.aggregate = mean, na.rm = TRUE,  fill=0))
+business.gasto.prom <- as.data.frame(dcast(business.gasto.prom, iataCode ~ traveler , value.var= "avgprecios", fun.aggregate = mean, na.rm = TRUE,  fill=0))
+
+singles.gasto.prom$five.day.stay <- singles.gasto.prom$singles *5
+setnames(singles.gasto.prom, c("iata","one.day.stay", "five.day.stay"))
+
+# merge de hotel con estadia
+costo.singles <- merge(hotel.avg.anual[,c("iata","pais.origen","five.day.hotel")], singles.gasto.prom[,c("iata","five.day.stay")], by="iata") # no pongo all.x=T. Si no hay costo promedio de la estadia, no me sirve.
+
+# merge de hotel y estadia con vuelo
+costo.singles <- merge(costo.singles, vuelos.avg.anual[,c("iata", "pais.origen", "flight.usd")], by=c("iata", "pais.origen"))
+
+costo.singles$total <- costo.singles$five.day.hotel	+ costo.singles$five.day.stay	+ costo.singles$flight.usd
+costo.singles <- as.data.table(costo.singles)
+costo.singles <- costo.singles[order(costo.singles$total, decreasing = TRUE ),]
+costo.singles$traveler <- "singles"
+
+# hago lo mismo para todos los traveler type
+family.gasto.prom$five.day.stay <- family.gasto.prom$family *5
+setnames(family.gasto.prom, c("iata","one.day.stay", "five.day.stay"))
+costo.family <- merge(hotel.avg.anual[,c("iata","pais.origen","five.day.hotel")], family.gasto.prom[,c("iata","five.day.stay")], by="iata") # no pongo all.x=T. Si no hay costo promedio de la estadia, no me sirve.
+costo.family <- merge(costo.family, vuelos.avg.anual[,c("iata", "pais.origen", "flight.usd")], by=c("iata", "pais.origen"))
+costo.family$total <- costo.family$five.day.hotel  + costo.family$five.day.stay  + costo.family$flight.usd
+costo.family <- as.data.table(costo.family)
+costo.family <- costo.family[order(costo.family$total, decreasing = TRUE ),]
+costo.family$traveler <- "family"
+
+couple.gasto.prom$five.day.stay <- couple.gasto.prom$couple *5
+setnames(couple.gasto.prom, c("iata","one.day.stay", "five.day.stay"))
+costo.couple <- merge(hotel.avg.anual[,c("iata","pais.origen","five.day.hotel")], couple.gasto.prom[,c("iata","five.day.stay")], by="iata") # no pongo all.x=T. Si no hay costo promedio de la estadia, no me sirve.
+costo.couple <- merge(costo.couple, vuelos.avg.anual[,c("iata", "pais.origen", "flight.usd")], by=c("iata", "pais.origen"))
+costo.couple$total <- costo.couple$five.day.hotel  + costo.couple$five.day.stay  + costo.couple$flight.usd
+costo.couple <- as.data.table(costo.couple)
+costo.couple <- costo.couple[order(costo.couple$total, decreasing = TRUE ),]
+costo.couple$traveler <- "couple"
+
+business.gasto.prom$five.day.stay <- business.gasto.prom$business *5
+setnames(business.gasto.prom, c("iata","one.day.stay", "five.day.stay"))
+costo.business <- merge(hotel.avg.anual[,c("iata","pais.origen","five.day.hotel")], business.gasto.prom[,c("iata","five.day.stay")], by="iata") # no pongo all.x=T. Si no hay costo promedio de la estadia, no me sirve.
+costo.business <- merge(costo.business, vuelos.avg.anual[,c("iata", "pais.origen", "flight.usd")], by=c("iata", "pais.origen"))
+costo.business$total <- costo.business$five.day.hotel  + costo.business$five.day.stay  + costo.business$flight.usd
+costo.business <- as.data.table(costo.business)
+costo.business <- costo.business[order(costo.business$total, decreasing = TRUE ),]
+costo.business$traveler <- "business"
+
+friends.gasto.prom$five.day.stay <- friends.gasto.prom$friends *5
+setnames(friends.gasto.prom, c("iata","one.day.stay", "five.day.stay"))
+costo.friends <- merge(hotel.avg.anual[,c("iata","pais.origen","five.day.hotel")], friends.gasto.prom[,c("iata","five.day.stay")], by="iata") # no pongo all.x=T. Si no hay costo promedio de la estadia, no me sirve.
+costo.friends <- merge(costo.friends, vuelos.avg.anual[,c("iata", "pais.origen", "flight.usd")], by=c("iata", "pais.origen"))
+costo.friends$total <- costo.friends$five.day.hotel  + costo.friends$five.day.stay  + costo.friends$flight.usd
+costo.friends <- as.data.table(costo.friends)
+costo.friends <- costo.friends[order(costo.friends$total, decreasing = TRUE ),]
+costo.friends$traveler <- "friends"
+
+rm(friends.gasto.prom, business.gasto.prom, family.gasto.prom, couple.gasto.prom, singles.gasto.prom )
+
+costo.x.traveler <- rbind(costo.singles, costo.friends, costo.family, costo.couple, costo.business)
+
+rm(costo.singles, costo.friends, costo.family, costo.couple, costo.business)
+
+costo.x.traveler.wide <- as.data.frame(dcast(costo.x.traveler, iata + pais.origen ~ traveler , value.var= "total", fun.aggregate = mean, na.rm = TRUE))
+write.csv(costo.x.traveler, file="costoxtraveler.csv")
+
+#### 2do Nivel: COSTO POR LOS ####
+#(length of stay) 
+# Voy a hacer una tablita por LOS, con el costo de un viaje esa estadia para diferentes origenes.
+
+# cuantos reviews tengo de cada LOS para cada destino??
+cant.reviews.x.los <- as.data.frame(dcast(reviews, iataCode ~ avgstay , value.var= "avgstay", fun.aggregate = length))
+
+#me quedo solo con los destinos para los que tengo mas de 10 reviews por los
+dos.keep <- as.data.frame(subset(cant.reviews.x.los, cant.reviews.x.los$'2.5' >=10)$iataCode)
+setnames(dos.keep, "iataCode")
+cinco.keep <- as.data.frame(subset(cant.reviews.x.los, cant.reviews.x.los$'5' >=10)$iataCode)
+setnames(cinco.keep, "iataCode")
+siete.keep <- as.data.frame(subset(cant.reviews.x.los, cant.reviews.x.los$'7' >=10)$iataCode)
+setnames(siete.keep, "iataCode")
+diez.keep <- as.data.frame(subset(cant.reviews.x.los, cant.reviews.x.los$'10' >=10)$iataCode)
+setnames(diez.keep, "iataCode")
+catorce.keep <- as.data.frame(subset(cant.reviews.x.los, cant.reviews.x.los$'14' >=10)$iataCode)
+setnames(catorce.keep, "iataCode")
+treinta.keep <- as.data.frame(subset(cant.reviews.x.los, cant.reviews.x.los$'30' >=10)$iataCode)
+setnames(treinta.keep, "iataCode")
+cuarentaycinco.keep <- as.data.frame(subset(cant.reviews.x.los, cant.reviews.x.los$'45' >=10)$iataCode)
+setnames(cuarentaycinco.keep, "iataCode")
+
+rm(cant.reviews.x.los)
+
+dos.gasto.prom <- subset(reviews, iataCode %in% dos.keep$iataCode & avgstay==2.5)
+cinco.gasto.prom <- subset(reviews, iataCode %in% cinco.keep$iataCode & avgstay==5)
+siete.gasto.prom <- subset(reviews, iataCode %in% siete.keep$iataCode & avgstay==7)
+diez.gasto.prom <- subset(reviews, iataCode %in% diez.keep$iataCode & avgstay==10)
+catorce.gasto.prom <- subset(reviews, iataCode %in% catorce.keep$iataCode & avgstay==14)
+treinta.gasto.prom <- subset(reviews, iataCode %in% treinta.keep$iataCode & avgstay==30)
+cuarentaycinco.gasto.prom <- subset(reviews, iataCode %in% cuarentaycinco.keep$iataCode & avgstay==45)
+
+dos.gasto.prom <- as.data.frame(dcast(dos.gasto.prom, iataCode ~ avgstay , value.var= "avgprecios", fun.aggregate = mean, na.rm = TRUE,  fill=0))
+cinco.gasto.prom <- as.data.frame(dcast(cinco.gasto.prom, iataCode ~ avgstay , value.var= "avgprecios", fun.aggregate = mean, na.rm = TRUE,  fill=0))
+siete.gasto.prom <- as.data.frame(dcast(siete.gasto.prom, iataCode ~ avgstay , value.var= "avgprecios", fun.aggregate = mean, na.rm = TRUE,  fill=0))
+diez.gasto.prom <- as.data.frame(dcast(diez.gasto.prom, iataCode ~ avgstay , value.var= "avgprecios", fun.aggregate = mean, na.rm = TRUE,  fill=0))
+catorce.gasto.prom <- as.data.frame(dcast(catorce.gasto.prom, iataCode ~ avgstay , value.var= "avgprecios", fun.aggregate = mean, na.rm = TRUE,  fill=0))
+treinta.gasto.prom <- as.data.frame(dcast(treinta.gasto.prom, iataCode ~ avgstay , value.var= "avgprecios", fun.aggregate = mean, na.rm = TRUE,  fill=0))
+cuarentaycinco.gasto.prom <- as.data.frame(dcast(cuarentaycinco.gasto.prom, iataCode ~ avgstay , value.var= "avgprecios", fun.aggregate = mean, na.rm = TRUE,  fill=0))
+
+# merge de hotel con estadia
+costo.x.los.wide <- merge(hotel.avg.anual[,c("iata","pais.origen","one.day.hotel")], dos.gasto.prom, by.x="iata", by.y="iataCode", all.x=T) # no pongo all.x=T. Si no hay costo promedio de la estadia, no me sirve.
+costo.x.los.wide <- merge(costo.x.los.wide, cinco.gasto.prom, by.x="iata", by.y="iataCode", all.x=T) 
+costo.x.los.wide <- merge(costo.x.los.wide, siete.gasto.prom, by.x="iata", by.y="iataCode", all.x=T) 
+costo.x.los.wide <- merge(costo.x.los.wide, diez.gasto.prom, by.x="iata", by.y="iataCode", all.x=T) 
+costo.x.los.wide <- merge(costo.x.los.wide, catorce.gasto.prom, by.x="iata", by.y="iataCode", all.x=T) 
+costo.x.los.wide <- merge(costo.x.los.wide, treinta.gasto.prom, by.x="iata", by.y="iataCode", all.x=T) 
+costo.x.los.wide <- merge(costo.x.los.wide, cuarentaycinco.gasto.prom, by.x="iata", by.y="iataCode", all.x=T) 
+setnames(costo.x.los.wide, c("iata","pais.origen","one.day.hotel", "dos", "cinco", "siete", "diez", "catorce", "treinta", "cuarentaycinco"))
+
+costo.x.los.wide <- subset(costo.x.los.wide, is.na(dos)==F|is.na(cinco)==F|is.na(siete)==F|is.na(diez)==F|
+                       is.na(catorce)==F|is.na(treinta)==F|is.na(cuarentaycinco)==F)
+
+# merge de hotel y estadia con precio de vuelo
+costo.x.los.wide <- merge(costo.x.los.wide, vuelos.avg.anual, by=c("iata", "pais.origen"))
+
+rm(dos.keep, cinco.keep, siete.keep, diez.keep, catorce.keep, treinta.keep, cuarentaycinco.keep)
+rm(dos.gasto.prom,cinco.gasto.prom,siete.gasto.prom,diez.gasto.prom,catorce.gasto.prom,treinta.gasto.prom,cuarentaycinco.gasto.prom)
+
+# gasto en hotel por duracion de viaje y agrego costo de vuelo
+costo.x.los.wide$dos <- costo.x.los.wide$dos*2 + costo.x.los.wide$one.day.hotel*2  + costo.x.los.wide$flight.usd
+costo.x.los.wide$cinco <- costo.x.los.wide$cinco*5 + costo.x.los.wide$one.day.hotel*5 + costo.x.los.wide$flight.usd
+costo.x.los.wide$siete <- costo.x.los.wide$siete*7 + costo.x.los.wide$one.day.hotel*7 + costo.x.los.wide$flight.usd
+costo.x.los.wide$diez <- costo.x.los.wide$diez*10 + costo.x.los.wide$one.day.hotel*10 + costo.x.los.wide$flight.usd
+costo.x.los.wide$catorce <- costo.x.los.wide$catorce*14 + costo.x.los.wide$one.day.hotel*14 + costo.x.los.wide$flight.usd
+costo.x.los.wide$treinta <- costo.x.los.wide$treinta*30 + costo.x.los.wide$one.day.hotel*30 + costo.x.los.wide$flight.usd
+costo.x.los.wide$cuarentaycinco <- costo.x.los.wide$cuarentaycinco*45 + costo.x.los.wide$one.day.hotel*45 + costo.x.los.wide$flight.usd
+costo.x.los.wide$flight.usd <- NULL
+costo.x.los.wide$one.day.hotel <- NULL
+
+costo.x.los <- melt(costo.x.los.wide, id.vars = c("iata", "pais.origen"))
+costo.x.los <- subset(costo.x.los, is.na(value)==F)
+setnames(costo.x.los, c("iata","pais.origen", "los", "costo.total"))
+
+write.csv(costo.x.los, file="costoxlos.csv")
+
+#### 3er Nivel: COSTO AVG POR IATA ####
+#falta un gasto promedio de estadia por destino ponderado por la cantidad de reviews para rellenar los NA de los otros dos
+costo.x.iata <- aggregate(reviews$avgprecios, by=list(reviews$iataCode), FUN = mean, na.rm = TRUE)
+setnames(costo.x.iata, c("iata", "avg.cost"))
+
+gasto.promedio.x.estadia <- merge(gasto.promedio.x.estadia, costo.x.iata, by="iata", all.x=T)
+
+# merge de hotel con estadia
+costo.x.iata <- merge(costo.x.iata, hotel.avg.anual, by="iata") # no pongo all.x=T. Si no hay costo promedio de la estadia, no me sirve.
+
+# merge de hotel y estadia con precio de vuelo
+costo.x.iata <- merge(costo.x.iata, vuelos.avg.anual, by=c("iata", "pais.origen"))
+
+#hago un viaje de duracion de 5 dias
+costo.x.iata$five.day.hotel <- costo.x.iata$one.day.hotel*5
+costo.x.iata$five.day.stay <- costo.x.iata$avg.cost*5
+costo.x.iata$total <- costo.x.iata$five.day.stay + costo.x.iata$five.day.hotel + costo.x.iata$flight
+costo.x.iata$one.day.hotel <- NULL
+costo.x.iata$avg.cost <- NULL
+
+write.csv(costo.x.iata, file="costoxiata.csv")
+
+#### 1er Nivel: COSTO POR LOS Y TRAVELER TYPE ####
+# cuantos reviews tengo de cada traveler type y LOS para cada destino??
+cant.reviews.x.travlos <- as.data.frame(dcast(reviews, iataCode ~ traveler + avgstay, value.var= "avgprecios", fun.aggregate = length))
+setnames(cant.reviews.x.travlos, c("iata","business.dos", "business.cinco", "business.siete", "business.diez", "business.catorce", "business.treinta", "business.cuarentaycinco",
+                                   "couple.dos", "couple.cinco", "couple.siete", "couple.diez", "couple.catorce", "couple.treinta", "couple.cuarentaycinco","couple.na",
+                                   "family.dos", "family.cinco", "family.siete", "family.diez", "family.catorce", "family.treinta", "family.cuarentaycinco",
+                                   "friends.dos", "friends.cinco", "friends.siete", "friends.diez", "friends.catorce", "friends.treinta", "friendsingles.cuarentaycinco",
+                                   "singles.dos", "singles.cinco", "singles.siete", "singles.diez", "singles.catorce", "singles.treinta", "singles.cuarentaycinco",
+                                   "na.dos", "na.cinco", "na.siete", "na.diez", "na.catorce", "na.treinta", "na.cuarentaycinco"))
+
+cant.reviews.x.travlos$couple.na <- NULL
+cant.reviews.x.travlos$na.dos <- NULL
+cant.reviews.x.travlos$na.cinco <- NULL
+cant.reviews.x.travlos$na.siete <- NULL
+cant.reviews.x.travlos$na.diez <- NULL
+cant.reviews.x.travlos$na.catorce <- NULL
+cant.reviews.x.travlos$na.treinta <- NULL
+cant.reviews.x.travlos$na.cuarentaycinco <- NULL
+
+cant.reviews.x.travlos.long <- melt(cant.reviews.x.travlos, id.vars = c("iata"))
+#subset de los que tienen mas de 10 reviews
+cant.reviews.x.travlos.long <- subset(cant.reviews.x.travlos.long, value>10)
+#hago un tag de iata y traveler y los. 
+cant.reviews.x.travlos.long$tag <- paste0(cant.reviews.x.travlos.long$iata, "_",cant.reviews.x.travlos.long$variable)
+
+costo.x.travlos <- as.data.frame(dcast(reviews, iataCode ~ traveler + avgstay, value.var= "avgprecios", fun.aggregate = mean, fill=0))
+setnames(costo.x.travlos, c("iata","business.dos", "business.cinco", "business.siete", "business.diez", "business.catorce", "business.treinta", "business.cuarentaycinco",
+                                   "couple.dos", "couple.cinco", "couple.siete", "couple.diez", "couple.catorce", "couple.treinta", "couple.cuarentaycinco","couple.na",
+                                   "family.dos", "family.cinco", "family.siete", "family.diez", "family.catorce", "family.treinta", "family.cuarentaycinco",
+                                   "friends.dos", "friends.cinco", "friends.siete", "friends.diez", "friends.catorce", "friends.treinta", "friends.cuarentaycinco",
+                                   "singles.dos", "singles.cinco", "singles.siete", "singles.diez", "singles.catorce", "singles.treinta", "singles.cuarentaycinco",
+                                   "na.dos", "na.cinco", "na.siete", "na.diez", "na.catorce", "na.treinta", "na.cuarentaycinco"))
+costo.x.travlos$couple.na <- NULL
+costo.x.travlos$na.dos <- NULL
+costo.x.travlos$na.cinco <- NULL
+costo.x.travlos$na.siete <- NULL
+costo.x.travlos$na.diez <- NULL
+costo.x.travlos$na.catorce <- NULL
+costo.x.travlos$na.treinta <- NULL
+costo.x.travlos$na.cuarentaycinco <- NULL
+
+costo.x.travlos.long <- melt(costo.x.travlos, id.vars = c("iata"))
+costo.x.travlos.long$tag <- paste0(costo.x.travlos.long$iata, "_",costo.x.travlos.long$variable)
+
+#uso el tag para quedarme solo los que tienen mas de 10 reviews
+costo.x.travlos.long <- subset(costo.x.travlos.long, tag %in% cant.reviews.x.travlos.long$tag)
+costo.x.travlos.long$tag <- NULL
+
+rm(cant.reviews.x.travlos, cant.reviews.x.travlos.long)
+
+#agrego costo del hotel de acuerdo a cada origen
+costo.x.travlos.long.AR <- merge(subset(hotel.avg.anual, pais.origen=="AR")[,c("iata","pais.origen","one.day.hotel")], costo.x.travlos.long, by="iata")
+costo.x.travlos.long.BR <- merge(subset(hotel.avg.anual, pais.origen=="BR")[,c("iata","pais.origen","one.day.hotel")], costo.x.travlos.long, by="iata")
+costo.x.travlos.long.EC <- merge(subset(hotel.avg.anual, pais.origen=="EC")[,c("iata","pais.origen","one.day.hotel")], costo.x.travlos.long, by="iata")
+costo.x.travlos.long.MX <- merge(subset(hotel.avg.anual, pais.origen=="MX")[,c("iata","pais.origen","one.day.hotel")], costo.x.travlos.long, by="iata")
+costo.x.travlos.long.CO <- merge(subset(hotel.avg.anual, pais.origen=="CO")[,c("iata","pais.origen","one.day.hotel")], costo.x.travlos.long, by="iata")
+costo.x.travlos.long.CL <- merge(subset(hotel.avg.anual, pais.origen=="CL")[,c("iata","pais.origen","one.day.hotel")], costo.x.travlos.long, by="iata")
+costo.x.travlos.long.PE <- merge(subset(hotel.avg.anual, pais.origen=="PE")[,c("iata","pais.origen","one.day.hotel")], costo.x.travlos.long, by="iata")
+
+costo.x.travlos.long <- rbind(costo.x.travlos.long.AR, costo.x.travlos.long.BR, costo.x.travlos.long.EC,  
+                              costo.x.travlos.long.MX, costo.x.travlos.long.CO, costo.x.travlos.long.PE,
+                              costo.x.travlos.long.CL)
+
+rm(costo.x.travlos.long.AR, costo.x.travlos.long.BR, costo.x.travlos.long.EC,  
+   costo.x.travlos.long.MX, costo.x.travlos.long.CO, costo.x.travlos.long.PE, costo.x.travlos.long.CL)
+
+#agrego costo del vuelo de acuerdo a cada origen
+costo.x.travlos.long <- merge(costo.x.travlos.long, vuelos.avg.anual, by=c("iata","pais.origen"))
+
+costo.x.travlos.long$variable <- as.character(costo.x.travlos.long$variable)
+costo.x.travlos.long$variable <- strsplit(costo.x.travlos.long$variable, "\\.")
+costo.x.travlos.long$traveler <- lapply(costo.x.travlos.long$variable, function(x) grep("^family$|^couple$|^friends$|^singles$|^business$", x, value=TRUE))
+costo.x.travlos.long$los <- lapply(costo.x.travlos.long$variable, function(x) grep("dos|cinco|siete|diez|catorce|treinta|cuarentaycinco", x, value=TRUE))
+
+# Multiplico por estadia
+costo.x.travlos.long$stay.x.dias <- ifelse(costo.x.travlos.long$los=="dos", costo.x.travlos.long$value*2,
+                                              ifelse(costo.x.travlos.long$los=="cinco", costo.x.travlos.long$value*5,
+                                                     ifelse(costo.x.travlos.long$los=="siete", costo.x.travlos.long$value*7,
+                                                            ifelse(costo.x.travlos.long$los=="diez", costo.x.travlos.long$value*10,
+                                                                   ifelse(costo.x.travlos.long$los=="catorce", costo.x.travlos.long$value*14,
+                                                                          ifelse(costo.x.travlos.long$los=="treinta", costo.x.travlos.long$value*30,
+                                                                                 costo.x.travlos.long$value*45))))))
+
+# Multiplico por dias de hotel
+costo.x.travlos.long$hotel.x.dias <- ifelse(costo.x.travlos.long$los=="dos", costo.x.travlos.long$one.day.hotel*2,
+                                           ifelse(costo.x.travlos.long$los=="cinco", costo.x.travlos.long$one.day.hotel*5,
+                                                  ifelse(costo.x.travlos.long$los=="siete", costo.x.travlos.long$one.day.hotel*7,
+                                                         ifelse(costo.x.travlos.long$los=="diez", costo.x.travlos.long$one.day.hotel*10,
+                                                                ifelse(costo.x.travlos.long$los=="catorce", costo.x.travlos.long$one.day.hotel*14,
+                                                                       ifelse(costo.x.travlos.long$los=="treinta", costo.x.travlos.long$one.day.hotel*30,
+                                                                              costo.x.travlos.long$one.day.hotel*45))))))
+# saco costo total de acuerdo a los
+costo.x.travlos.long$total.x.dias <- costo.x.travlos.long$hotel.x.dias + costo.x.travlos.long$stay.x.dias +costo.x.travlos.long$flight
+
+costo.x.travlos.long$variable <- NULL
+costo.x.travlos.long$los <- as.character(costo.x.travlos.long$los)
+costo.x.travlos.long$traveler <- as.character(costo.x.travlos.long$traveler)
+setnames(costo.x.travlos.long, "value", "one.day.stay")
+
+write.csv(costo.x.travlos.long, file="costoxtravlos.csv")
+
+#### 2do Nivel: subset THEME ####
+# subset de tipo de destino. "ement" es entertainment
+reviews.playa <- subset(reviews, lapply(reviews$description, function(x) grep("sunandsea",x,value=FALSE))>0)
+reviews.shopping <- subset(reviews, lapply(reviews$description, function(x) grep("Shop",x,value=FALSE))>0)
+reviews.casino <- subset(reviews, lapply(reviews$description, function(x) grep("casino",x,value=FALSE))>0)
+reviews.carnival <- subset(reviews, lapply(reviews$description, function(x) grep("carnival",x,value=FALSE))>0)
+reviews.nature <- subset(reviews, lapply(reviews$description, function(x) any(grepl("sunandsea|openair|mountain|lake|rio|nature|hotsprings",x)==T))==T)
+reviews.sports <- subset(reviews, lapply(reviews$description, function(x) any(grepl("hiking|watersports|fishing|adventure|diving|extremesports|snorkel|ski|surf",x)==T))==T)
+reviews.culture <- subset(reviews, lapply(reviews$description, function(x) any(grepl("architecture|gateways|archeology|museum|historiccentre|exhibitions|city|culturaltours|art|livemusic|religion|ement",x)==T))==T)
+reviews.foodies <- subset(reviews, lapply(reviews$description, function(x) any(grepl("gastronomic|wines",x)==T))==T)
+reviews.romantic <- subset(reviews, lapply(reviews$description, function(x) any(grepl("honeymoon|romantic",x)==T))==T)
+reviews.relax <- subset(reviews, lapply(reviews$description, function(x) any(grepl("relax|hotsprings",x)==T))==T)
+reviews.nightlife <- subset(reviews, lapply(reviews$description, function(x) grep("nightlife",x,value=FALSE))>0)
+reviews.ski <- subset(reviews, lapply(reviews$description, function(x) grep("ski",x,value=FALSE))>0)
+reviews.amusement <- subset(reviews, lapply(reviews$description, function(x) grep("amusement",x,value=FALSE))>0)
+
+# voy a decir que un destino es de determinado theme si al menos 10% de sus reviews lo asocian con ese theme
+
+# cantidad de reviews por iata
+cant.reviews.x.iata <- aggregate(reviews$idcro, by=list(reviews$iataCode), FUN = length)
+setnames(cant.reviews.x.iata, c("iata","cant.reviews"))
+
+playa.cant.reviews.x.iata <- aggregate(reviews.playa$idcro, by=list(reviews.playa$iataCode), FUN = length)
+setnames(playa.cant.reviews.x.iata, c("iata","playa.cant.reviews"))
+cant.reviews.x.iata <- merge(cant.reviews.x.iata, playa.cant.reviews.x.iata, by="iata", all.x=T)
+
+shopping.cant.reviews.x.iata <- aggregate(reviews.shopping$idcro, by=list(reviews.shopping$iataCode), FUN = length)
+setnames(shopping.cant.reviews.x.iata, c("iata","shopping.cant.reviews"))
+cant.reviews.x.iata <- merge(cant.reviews.x.iata, shopping.cant.reviews.x.iata, by="iata", all.x=T)
+
+casino.cant.reviews.x.iata <- aggregate(reviews.casino$idcro, by=list(reviews.casino$iataCode), FUN = length)
+setnames(casino.cant.reviews.x.iata, c("iata","casino.cant.reviews"))
+cant.reviews.x.iata <- merge(cant.reviews.x.iata, casino.cant.reviews.x.iata, by="iata", all.x=T)
+
+carnival.cant.reviews.x.iata <- aggregate(reviews.carnival$idcro, by=list(reviews.carnival$iataCode), FUN = length)
+setnames(carnival.cant.reviews.x.iata, c("iata","carnival.cant.reviews"))
+cant.reviews.x.iata <- merge(cant.reviews.x.iata, carnival.cant.reviews.x.iata, by="iata", all.x=T)
+
+nature.cant.reviews.x.iata <- aggregate(reviews.nature$idcro, by=list(reviews.nature$iataCode), FUN = length)
+setnames(nature.cant.reviews.x.iata, c("iata","nature.cant.reviews"))
+cant.reviews.x.iata <- merge(cant.reviews.x.iata, nature.cant.reviews.x.iata, by="iata", all.x=T)
+
+sports.cant.reviews.x.iata <- aggregate(reviews.sports$idcro, by=list(reviews.sports$iataCode), FUN = length)
+setnames(sports.cant.reviews.x.iata, c("iata","sports.cant.reviews"))
+cant.reviews.x.iata <- merge(cant.reviews.x.iata, sports.cant.reviews.x.iata, by="iata", all.x=T)
+
+culture.cant.reviews.x.iata <- aggregate(reviews.culture$idcro, by=list(reviews.culture$iataCode), FUN = length)
+setnames(culture.cant.reviews.x.iata, c("iata","culture.cant.reviews"))
+cant.reviews.x.iata <- merge(cant.reviews.x.iata, culture.cant.reviews.x.iata, by="iata", all.x=T)
+
+foodies.cant.reviews.x.iata <- aggregate(reviews.foodies$idcro, by=list(reviews.foodies$iataCode), FUN = length)
+setnames(foodies.cant.reviews.x.iata, c("iata","foodies.cant.reviews"))
+cant.reviews.x.iata <- merge(cant.reviews.x.iata, foodies.cant.reviews.x.iata, by="iata", all.x=T)
+
+romantic.cant.reviews.x.iata <- aggregate(reviews.romantic$idcro, by=list(reviews.romantic$iataCode), FUN = length)
+setnames(romantic.cant.reviews.x.iata, c("iata","romantic.cant.reviews"))
+cant.reviews.x.iata <- merge(cant.reviews.x.iata, romantic.cant.reviews.x.iata, by="iata", all.x=T)
+
+relax.cant.reviews.x.iata <- aggregate(reviews.relax$idcro, by=list(reviews.relax$iataCode), FUN = length)
+setnames(relax.cant.reviews.x.iata, c("iata","relax.cant.reviews"))
+cant.reviews.x.iata <- merge(cant.reviews.x.iata, relax.cant.reviews.x.iata, by="iata", all.x=T)
+
+nightlife.cant.reviews.x.iata <- aggregate(reviews.nightlife$idcro, by=list(reviews.nightlife$iataCode), FUN = length)
+setnames(nightlife.cant.reviews.x.iata, c("iata","nightlife.cant.reviews"))
+cant.reviews.x.iata <- merge(cant.reviews.x.iata, nightlife.cant.reviews.x.iata, by="iata", all.x=T)
+
+ski.cant.reviews.x.iata <- aggregate(reviews.ski$idcro, by=list(reviews.ski$iataCode), FUN = length)
+setnames(ski.cant.reviews.x.iata, c("iata","ski.cant.reviews"))
+cant.reviews.x.iata <- merge(cant.reviews.x.iata, ski.cant.reviews.x.iata, by="iata", all.x=T)
+
+amusement.cant.reviews.x.iata <- aggregate(reviews.amusement$idcro, by=list(reviews.amusement$iataCode), FUN = length)
+setnames(amusement.cant.reviews.x.iata, c("iata","amusement.cant.reviews"))
+cant.reviews.x.iata <- merge(cant.reviews.x.iata, amusement.cant.reviews.x.iata, by="iata", all.x=T)
+
+rm(amusement.cant.reviews.x.iata, ski.cant.reviews.x.iata, nightlife.cant.reviews.x.iata, relax.cant.reviews.x.iata,
+   romantic.cant.reviews.x.iata, foodies.cant.reviews.x.iata, culture.cant.reviews.x.iata, sports.cant.reviews.x.iata, 
+   nature.cant.reviews.x.iata, carnival.cant.reviews.x.iata, casino.cant.reviews.x.iata, playa.cant.reviews.x.iata, 
+   shopping.cant.reviews.x.iata, reviews.amusement, reviews.ski, reviews.nightlife, reviews.relax, reviews.romantic, 
+   reviews.foodies,reviews.culture, reviews.sports, reviews.nature, reviews.carnival, reviews.casino, reviews.shopping
+   reviews.playa)
+
+cant.reviews.x.iata$tot.reviews <- rowSums( cbind (cant.reviews.x.iata[,2:ncol(cant.reviews.x.iata)]), na.rm=TRUE)
+
+cant.reviews.x.iata <- as.data.table(cant.reviews.x.iata)                                        
+cant.reviews.x.iata.per = cant.reviews.x.iata[,list(iata,
+                                                     playa.cant.reviews=playa.cant.reviews/tot.reviews,
+                                                     shopping.cant.reviews=shopping.cant.reviews/tot.reviews,
+                                                     casino.cant.reviews=casino.cant.reviews/tot.reviews,
+                                                     carnival.cant.reviews=carnival.cant.reviews/tot.reviews,
+                                                     nature.cant.reviews=nature.cant.reviews/tot.reviews,
+                                                     sports.cant.reviews=sports.cant.reviews/tot.reviews,
+                                                     culture.cant.reviews=culture.cant.reviews/tot.reviews,
+                                                     romantic.cant.reviews=romantic.cant.reviews/tot.reviews,
+                                                     foodies.cant.reviews=foodies.cant.reviews/tot.reviews,
+                                                     relax.cant.reviews=relax.cant.reviews/tot.reviews,
+                                                     nightlife.cant.reviews=nightlife.cant.reviews/tot.reviews,
+                                                     amusement.cant.reviews=amusement.cant.reviews/tot.reviews,
+                                                     ski.cant.reviews=ski.cant.reviews/tot.reviews)]
+  
+setnames(playa.cant.reviews.x.iata, c("iata","playa.cant.reviews"))
+cant.reviews.x.iata <- merge(cant.reviews.x.iata, playa.cant.reviews.x.iata, by="iata", all.x=T)
+
+reviews$playa <- ifelse (lapply(reviews$description, function(x) grep("sunandsea",x,value=FALSE))>0, 1, 0)
+reviews$shopping <- ifelse (lapply(reviews$description, function(x) grep("Shop",x,value=FALSE))>0, 1, 0)
+reviews$casino <- ifelse (lapply(reviews$description, function(x) grep("casino",x,value=FALSE))>0, 1, 0)
+reviews$carnival <- ifelse (lapply(reviews$description, function(x) grep("carnival",x,value=FALSE))>0, 1, 0)
+reviews$nature <- ifelse (lapply(reviews$description, function(x) any(grepl("sunandsea|openair|mountain|lake|rio|nature|hotsprings",x)==T))==T, 1, 0)
+reviews$sports <- ifelse (lapply(reviews$description, function(x) any(grepl("hiking|watersports|fishing|adventure|diving|extremesports|snorkel|ski|surf",x)==T))==T, 1, 0)
+reviews$culture <- ifelse (lapply(reviews$description, function(x) any(grepl("architecture|gateways|archeology|museum|historiccentre|exhibitions|city|culturaltours|art|livemusic|religion|ement",x)==T))==T, 1, 0)
+reviews$foodies <- ifelse (lapply(reviews$description, function(x) any(grepl("gastronomic|wines",x)==T))==T, 1, 0)
+reviews$romantic <- ifelse (lapply(reviews$description, function(x) any(grepl("honeymoon|romantic",x)==T))==T, 1, 0)
+reviews$relax <- ifelse (lapply(reviews$description, function(x) any(grepl("relax|hotsprings",x)==T))==T, 1, 0)
+reviews$nightlife <- ifelse (lapply(reviews$description, function(x) grep("nightlife",x,value=FALSE))>0, 1, 0)
+reviews$ski <- ifelse(lapply(reviews$description, function(x) grep("ski",x,value=FALSE))>0, 1, 0)
+reviews$amusement <- ifelse(lapply(reviews$description, function(x) grep("amusement",x,value=FALSE))>0, 1, 0)
+
+lala <- aggregate(reviews$idcro, by=list(reviews$iataCode), FUN = length,  na.action = na.omit)
+
+
+
+theme <- reviews[, c( "iataCode","playa","shopping","casino","carnival","nature","sports","culture","foodies","romantic","relax","nightlife","ski","amusement")]
+theme[,2:ncol(theme)] <- data.frame(lapply(theme[,2:ncol(theme)], as.numeric), stringsAsFactors=FALSE)
+theme$iataCode <- as.character(theme$iataCode)
+theme <- as.data.table(theme)
+tablita <- theme[, lapply(.SD, sum), by = iataCode]
+
+tablita <- aggregate(. ~ iataCode, 
+                     data=theme, FUN=length)
+
+theme <- as.data.frame(dcast(reviews, iataCode ~ playa + shopping + casino, value.var= "idcro", fun.aggregate = length))
+
+theme <- as.data.table(reviews)
+
+tablita <- theme[,length(iataCode),by=c("playa","shopping")]
+
+
+
+
+cant.reviews.x.iata$cant.reviews[cant.reviews.x.iata$iata=="BOG"]
+
+reviews.playa <- reviews.playa[!duplicated(reviews.playa$iataCode),]
+
+
+nrow(reviews[!duplicated(reviews$iataCode),])
+
+# tipo de destino
+reviews$sports <- lapply(reviews$description, function(x) grepl("hiking|watersports|fishing|adventure|diving|extremesports|ski|snorkel|surf",x)==T)
+
+#### Precios de VUELOS  de Indec #### <- MEJOR LOS DATOS DE QLIKVIEW
+# voy a calcular el costo de un vuelo y de un paquete desde el aeropuerto principal de estos paises
+#  -Brasil SAO RIO
+#  -Argentina EZE BUE
+#  -Mexico MEX
+#  -Colombia BOG
+#  -Chile SCL
+#  -Peru LIM
+#  -Ecuador UIO
+# con destino de cada una de las ciudades.
+# para los meses de enero, abril, julio y octubre
+# Tengo que calcular cuantas noches de hotel incluye ese paquete. 
+# dividir la diferencia entre precio paquete y precio vuelo por la cantidad de dias de estadia
+# multiplicar por cada uno de los rangos de duraciones
+
+### llamar a la funcion con parLapply
+COUNTRY1 <- "MX"
+ORIGEN1 <- "MEX"
+FROM1 <- "20160701"
+TO1 <- "20160731"
+PRODUCT1 <-0
+
+clus <- makeCluster(10)
+clusterExport(clus, list("tabulateJSON", "fromJSON", "getURL", "getLowestPrice", "COUNTRY1", "ORIGEN1", "FROM1", "TO1", "PRODUCT1"), envir=environment())
+MEX.julio.vue <- parLapply(clus, subset(reviews, !duplicated(reviews$iataCode))$iataCode, function(x) getLowestPrice(DESTINO=x, COUNTRY=COUNTRY1, ORIGEN=ORIGEN1, FROM=FROM1, TO=TO1, PRODUCT=PRODUCT1))
+MEX.julio.vue <- do.call(rbind.data.frame, MEX.julio.vue)
+
+MEX.julio.vue <- subset(MEX.julio.vue, currency=="USD")
+MEX.julio.vue$mes <- "julio"
+MEX.julio.vue$producto <- "vuelo"
+MEX.julio.vue$pais <- COUNTRY1
+
+stopCluster(clus)
+
+# luego debo hacer merge para cada origen y mes
+vuelos <- rbind(BUE.enero.vue, BUE.abril.vue, BUE.julio.vue, BUE.octubre.vue, EZE.enero.vue, EZE.abril.vue, 
+                EZE.julio.vue, EZE.octubre.vue, RIO.enero.vue, RIO.abril.vue, RIO.julio.vue, RIO.octubre.vue, 
+                SAO.enero.vue, SAO.abril.vue, SAO.julio.vue, SAO.octubre.vue, BOG.enero.vue, BOG.abril.vue, 
+                BOG.julio.vue, BOG.octubre.vue, LIM.enero.vue, LIM.abril.vue, LIM.julio.vue, LIM.octubre.vue, 
+                SCL.enero.vue, SCL.abril.vue, SCL.julio.vue, SCL.octubre.vue, UIO.enero.vue, UIO.abril.vue, 
+                UIO.julio.vue, UIO.octubre.vue, MEX.enero.vue, MEX.abril.vue, MEX.julio.vue, MEX.octubre.vue)
+
+vuelos$totalFare <- as.numeric(as.character(vuelos$totalFare))
+
+# saco el costo promedio del vuelo sin contar el mes
+vuelos.avg.anual <- as.data.frame(dcast(vuelos, DESTINO ~ pais, value.var= "totalFare", fun.aggregate = mean, na.rm = TRUE,  fill=0))
+vuelos.avg.anual <- melt(vuelos.avg.anual, id.vars = c("DESTINO"))
+vuelos.avg.anual$value <- ifelse(vuelos.avg.anual$value== 0, NA, vuelos.avg.anual$value )
+vuelos.avg.anual <- subset(vuelos.avg.anual, is.na(value)==F)
+setnames(vuelos.avg.anual, c("iata","pais.origen", "vuelo"))
+
+
+#### Tablas resumen #### 
+# REEMPLAZADAS MAS ABAJO?
+gasto.promedio.x.traveler <- as.data.frame(dcast(reviews, iataCode ~ traveler , value.var= "avgprecios", fun.aggregate = mean, na.rm = TRUE,  fill=0))
+gasto.promedio.x.traveler[  gasto.promedio.x.traveler == 0 ] <- NA
+setnames(gasto.promedio.x.traveler , c("IATA","business","couple","family","friends","singles","lala"))
+gasto.promedio.x.traveler$lala <- NULL
+
+gasto.promedio.x.estadia <- dcast(reviews, iataCode ~ avgstay , value.var= "avgprecios", fun.aggregate = mean, na.rm = TRUE,  fill=0)
+gasto.promedio.x.estadia[  gasto.promedio.x.estadia == 0 ] <- NA
+setnames(gasto.promedio.x.estadia , c("iata","dosN.stay","cincoN.stay", "sieteN.stay","diezN.stay","catorceN.stay","treintaN.stay","cuarentaycincoN.stay","lala"))
+gasto.promedio.x.estadia$lala <- NULL
+
+
+# contar cada palabra del theme
+
+theme <- reviews[, c("geoid","description","avgprecios","traveler","avgstay","iataCode")]
+theme$adventure <- (length(grep("adventure", theme)))
+theme$archeology <- (length(grep("adventure", theme)))
+theme$fishing <- (length(grep("adventure", theme)))
+theme$hiking <- (length(grep("adventure", theme)))
+theme$lake <- (length(grep("adventure", theme)))
+theme$mountain <- (length(grep("adventure", theme)))
+theme$nature <- (length(grep("adventure", theme)))
+theme$openair <- (length(grep("adventure", theme)))
+theme$relax <- (length(grep("adventure", theme)))
+theme$ski <- (length(grep("adventure", theme)))
+theme$diving <- (length(grep("adventure", theme)))
+theme$extremesports <- (length(grep("adventure", theme)))
+theme$rio <- (length(grep("adventure", theme)))
+theme$snorkel <- (length(grep("adventure", theme)))
+theme$sunandsea <- (length(grep("adventure", theme)))
+theme$surf <- (length(grep("adventure", theme)))
+theme$watersports <- (length(grep("adventure", theme)))
+theme$amusement <- (length(grep("adventure", theme)))
+theme$architecture <- (length(grep("adventure", theme)))
+theme$art <- (length(grep("adventure", theme)))
+theme$carnival <- (length(grep("adventure", theme)))
+theme$casino <- (length(grep("adventure", theme)))
+theme$city <- (length(grep("adventure", theme)))
+theme$culturaltours <- (length(grep("adventure", theme)))
+theme$ement <- (length(grep("adventure", theme)))
+theme$exhibitions <- (length(grep("adventure", theme)))
+theme$gastronomic <- (length(grep("adventure", theme)))
+theme$gateways <- (length(grep("adventure", theme)))
+theme$ historiccentre <- (length(grep("adventure", theme)))
+theme$livemusic <- (length(grep("adventure", theme)))
+theme$museum <- (length(grep("adventure", theme)))
+theme$nightlife <- (length(grep("adventure", theme)))
+theme$religion <- (length(grep("religion", theme)))
+theme$shop <- (length(grep("Shop", theme)))
+theme$theatre <- (length(grep("theatre", theme)))
+theme$tourism <- (length(grep("tourism", theme)))
+theme$wines <- (length(grep("wines", theme)))
+theme$honeymoon <- (length(grep("honeymoon", theme)))
+theme$hotsprings <- (length(grep("hotsprings", theme)))
+theme$romantic <- (length(grep("romantic", theme)))
+
+
+
