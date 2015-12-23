@@ -1,0 +1,238 @@
+setwd("/home/despegar/rstudio_data/vseminario/Feriados/")
+
+data <- read.table("/home/despegar/rstudio_data/vseminario/Feriados/Findes Vero2.csv", sep=";", header =T, quote = "")
+
+#cambio las clases de las vars a numeric
+num.vars <- which(sapply(data[1:10000,], function(x) any(grepl("^[0-9]+$",x))))
+#excl <- which(names(data) %in% c("di"))
+#num.vars <- setdiff(num.vars, excl)
+for(i in num.vars){
+  data[,i] <- as.numeric(as.character(data[,i]))
+}
+
+# limpio el workspace
+rm(excl, i, num.vars)
+
+# excluyo cancelaciones con fee negativo
+data <- subset (data, gb >1)
+
+#paso a formato de fecha
+# las fechas estan viniendo en dos formatos diferentes
+table(nchar(data$id_dim_tiempo_checkin))
+      
+data$fecha.ci <- as.Date(ifelse(nchar(data$id_dim_tiempo_checkin)== 5, 
+                        as.Date(data$id_dim_tiempo_checkin,  origin = "1899-12-30"), 
+                        as.Date(strptime(data$id_dim_tiempo_checkin, format="%Y%m%d"))))
+
+data$fecha.co <- as.Date(ifelse(nchar(data$id_dim_tiempo_checkout)== 5, 
+                                as.Date(data$id_dim_tiempo_checkout,  origin = "1899-12-30"), 
+                                as.Date(strptime(data$id_dim_tiempo_checkout, format="%Y%m%d"))))
+
+data$fecha.reserva <- as.Date(strptime(data$id_dim_tiempo_reserva, format="%Y%m%d"))
+data$fecha.emision <- as.Date(strptime(data$id_dim_tiempo_emision, format="%Y%m%d"))
+
+data$id_dim_tiempo_checkin <- NULL
+data$id_dim_tiempo_checkout <- NULL
+data$id_dim_tiempo_reserva <- NULL
+data$id_dim_tiempo_emision <- NULL
+
+# busco ids de pais, ciudad y producto como aparecen en pentaho
+ciudades.origen <- read.table("/home/despegar/rstudio_data/vseminario/ids pentaho/ciudades.csv", sep=";", header =T, quote = "")
+colnames(ciudades.origen) <- c("id_dim_ciudad","desc_ciudad","ciudad.origen")
+ciudades.origen$ciudad.origen <- as.character(ciudades.origen$ciudad.origen)
+ciudades.destino <- read.table("/home/despegar/rstudio_data/vseminario/ids pentaho/ciudades.csv", sep=";", header =T, quote = "")
+colnames(ciudades.destino) <- c("id_dim_ciudad","desc_ciudad","ciudad.destino")
+ciudades.destino$ciudad.destino <- as.character(ciudades.destino$ciudad.destino)
+aerolineas <- read.table("/home/despegar/rstudio_data/vseminario/ids pentaho/aerolineas.csv", sep=";", header =T, quote = "")
+aerolineas$id_dim_aerolinea <- as.character(aerolineas$id_dim_aerolinea)
+paises.origen <- read.table("/home/despegar/rstudio_data/vseminario/ids pentaho/paises.csv", sep=";", header =T, quote = "")
+colnames(paises.origen) <- c("id_dim_pais","pais.origen","desc_pais","NA1","NA2")
+paises.origen$pais.origen <- as.character(paises.origen$pais.origen)
+paises.destino <- read.table("/home/despegar/rstudio_data/vseminario/ids pentaho/paises.csv", sep=";", header =T, quote = "")
+colnames(paises.destino) <- c("id_dim_pais","pais.destino","desc_pais","NA1","NA2")
+paises.destino$pais.destino <- as.character(paises.destino$pais.destino)
+productos <- read.table("/home/despegar/rstudio_data/vseminario/ids pentaho/productos.csv", sep=";", header =T, quote = "")
+productos$desc_producto <- as.character(productos$desc_producto)
+
+data <- merge(data, productos[,c("id_dim_producto","desc_producto")], by="id_dim_producto", all.x=T)
+data <- merge(data, aerolineas, by.x="id_dim_aerolinea_ppal", by.y="id_dim_aerolinea", all.x=T)
+data <- merge(data, ciudades.destino[,c("id_dim_ciudad","ciudad.destino")], by.x="id_dim_ciudad_destino",by.y="id_dim_ciudad", all.x=T)
+data <- merge(data, paises.destino[,c("id_dim_pais","pais.destino")], by.x="id_dim_pais_destino", by.y="id_dim_pais", all.x=T)
+data <- merge(data, ciudades.origen[,c("id_dim_ciudad","ciudad.origen")], by.x="id_dim_ciudad_origen",by.y="id_dim_ciudad", all.x=T)
+data <- merge(data, paises.origen[,c("id_dim_pais","pais.origen")], by.x="id_dim_pais_origen", by.y="id_dim_pais", all.x=T)
+
+data$id_dim_producto <- NULL
+data$id_dim_ciudad_origen <- NULL
+data$id_dim_ciudad_destino <- NULL
+data$id_dim_pais_origen <- NULL
+data$id_dim_pais_destino <- NULL
+data$id_dim_aerolinea_ppal <- NULL
+
+rm(paises.destino, paises.origen,aerolineas,ciudades.destino, ciudades.origen,productos)
+
+data <- subset(data, desc_producto== "Hoteles" | desc_producto== "Vuelos" | desc_producto== "Cruceros")
+
+# Distancia
+# para vuelos es la dist entre aeropuerto de origen y de destino. 
+# Para hoteles es la distancia con Buenos Aires
+
+data$pais.origen <- ifelse(data$desc_producto=="Hoteles", "AR", data$pais.origen)
+data$ciudad.origen <- ifelse(data$desc_producto=="Hoteles", "BUE", data$ciudad.origen)
+data$desc_aerolinea <- ifelse(data$desc_producto=="Hoteles" | data$desc_producto== "Cruceros", NA, data$desc_aerolinea)
+
+# bajo las tablas con los iatas y hago merge
+load("/home/despegar/rstudio_data/vseminario/datos utiles/info iatas.rda")
+iatas.destino <- subset(iatas.frame[,c(2,3,7,8,12)])
+setnames(iatas.destino, 1:5, c("iataCode","nombre.destino","lat.destino","lon.destino","country.destino")) # aca cambie el nombre de la columna para no confundirme en el merge
+data <- merge(data, iatas.destino, by.x="ciudad.destino", by.y="iataCode", all.x=T)
+
+iatas.origen <- subset(iatas.frame[,c(2,3,7,8,12)])
+setnames(iatas.origen, 1:5, c("iataCode","nombre.origen","lat.origen","lon.origen","country.origen")) # aca cambie el nombre de la columna para no confundirme en el merge
+data <- merge(data, iatas.origen, by.x="ciudad.origen", by.y="iataCode", all.x=T)
+
+# funcion que calcula la distancia en km
+source("/home/despegar/rstudio_data/vseminario/Funciones/funcion distancia km.R")
+
+data$lat.origen <- as.numeric(as.character(data$lat.origen))
+data$lon.origen <- as.numeric(as.character(data$lon.origen))
+data$lat.destino <- as.numeric(as.character(data$lat.destino))
+data$lon.destino <- as.numeric(as.character(data$lon.destino))
+
+data$distancia <- earth.dist(data$lon.origen,data$lat.origen,data$lon.destino,data$lat.destino)
+
+data$lat.origen <- NULL
+data$lon.origen <- NULL
+data$lat.destino <- NULL
+data$lon.destino <- NULL
+
+# limpio el workspace
+rm(earth.dist, iatas.destino, iatas.frame)
+
+data$pais.origen <- ifelse(data$desc_producto=="Hoteles", NA, data$pais.origen)
+data$ciudad.origen <- ifelse(data$desc_producto=="Hoteles", NA, data$ciudad.origen)
+data$desc_aerolinea <- ifelse(data$desc_producto=="Hoteles" | data$desc_producto== "Cruceros", NA, data$desc_aerolinea)
+
+# saco obs donde no se ci ni co
+data <- subset(data, is.na(data$fecha.ci)==F | is.na(data$fecha.co)==F)
+
+prueba <- data 
+
+# Anticipacion y duracion
+# la variable duracion ya la tengo de Pentaho. La uso para completar fechas de ci o de co
+library("zoo")
+data$fecha.ci <- as.Date(ifelse(is.na(data$fecha.ci)==T & is.na(data$fecha.co)==F & is.na(data$duracion)==F,
+       data$fecha.co-data$duracion, data$fecha.ci))
+
+data$fecha.co <- as.Date(ifelse(is.na(data$fecha.co)==T & is.na(data$fecha.ci)==F & is.na(data$duracion)==F,
+                        data$fecha.ci+data$duracion, data$fecha.co))
+
+data$duracion <- ifelse(is.na(data$fecha.ci)==F & is.na(data$fecha.ci)==F,
+                        round(as.numeric(data$fecha.co - data$fecha.ci), digits=0),
+                        data$duracion)
+
+data$anticipacion <- round(as.numeric(data$fecha.ci - as.Date(data$fecha.reserva)), digits=0)
+
+# haciendo summary de fecha.ci me da 3 en el año 2201 y 92 antes de 2013
+data <- subset(data, fecha.ci < "2018-01-01" & fecha.ci > "2013-01-01")
+
+# haciendo un table de anticipacion me da algunos valores negativos (unos 3023). 
+# cuando la anticipacion es -1, les pongo 0 porque podria ser una diferencia de horas
+# al resto los filtro. termino sacando 706.
+data$fecha.ci <- as.Date(ifelse(data$anticipacion== -1, 
+                                data$fecha.reserva, data$fecha.ci))
+
+data$anticipacion <- ifelse(data$anticipacion== -1, 0, data$anticipacion)
+
+data <- subset(data, anticipacion >= 0)
+
+#esto me dice el nombre del dia de la semana
+data$day.ci <- weekdays(as.Date(data$fecha.ci))
+data$day.co <- weekdays(as.Date(data$fecha.co))
+data$day.reserva <- weekdays(as.Date(data$fecha.reserva))
+
+# con estas reglas armo FindesAR:
+# -  quiero saber que dia salen y que dia vuelven. Debe coincidir si o si con un día de fin de semana
+# -  ci puede ser miercoles, jueves, viernes, sabado o domingo o lunes
+# -  co puede ser viernes (si saliste un jueves) sabado, domingo, lunes o martes
+# -  duracion como maximo puede ser 5 (si ci es miercoles a la noche y co es domingo
+#    o si co es martes y ci es viernes)
+
+# hay 186 obs donde duracion es menor a cero y 487,272 donde es mayor a 5. las saco 
+data <- subset(data, duracion >= 0 & duracion <6)
+
+# tengo una tabla que numera los fines de semana y contiene para cada uno las 
+# fechas en que es aceptable decir que una cierta fecha de ci pertenecio a ese finde.
+# lo mismo para fechas de co.
+# hare un merge que me diga a que finde pertenecio la fecha de ci y de co de cada 
+# transaccion que tengo. 
+# Si es NA en co o en ci => no es viaje de finde.
+# si no coincide el finde de ci con el finde de la fecha de co => no es viaje de finde. 
+
+findes <- read.table("/home/despegar/rstudio_data/vseminario/Feriados/FindesAR.csv", sep=",", header =T, quote = "")
+findes$fecha.dia <- as.Date(strptime(as.character(findes$fecha.dia), format="%d/%m/%Y"))
+
+data <- merge(data, findes[,c("fecha.dia","fechasde.ci")], by.x="fecha.ci", by.y="fecha.dia", all.x=T)
+data <- merge(data, findes[,c("fecha.dia","fechasde.co")], by.x="fecha.co", by.y="fecha.dia", all.x=T)
+
+data <- subset(data, fechasde.ci==fechasde.co) 
+
+#### TAGS ####
+# ultimos dos meses del año y fiestas
+data$mes.reserva <- month(as.Date(data$fecha.reserva)) 
+
+findeanio <- subset(data, mes.reserva>10)
+
+                            
+#### ANALISIS ####
+# Destino mas frecuente para hoteles
+hot.destino <- table(subset(data, desc_producto=="Hoteles")$ciudad.destino)
+write.csv(hot.destino, file="hotdestino.csv")
+# Destino mas frecuente para vuelos
+vue.destino <- table(subset(data, desc_producto=="Vuelos")$ciudad.destino)
+write.csv(vue.destino, file="vuedestino.csv")
+# Origen mas frecuente para vuelos
+vue.origen <- as.data.frame(table(subset(data, desc_producto=="Vuelos")$ciudad.origen))
+vue.origen <- vue.origen[order(vue.origen$Freq, decreasing = TRUE ),][1:10]
+write.csv(vue.origen, file="vueorigen.csv")
+# Destino mas frecuente para vuelos con origen BUE
+vue.destino.BUE <- table(subset(data, desc_producto=="Vuelos" & ciudad.origen=="BUE")$ciudad.destino)
+write.csv(vue.destino.BUE, file="vuedestinoBUE.csv")
+# Destino mas frecuente para vuelos con origen COR
+vue.destino.COR <- table(subset(data, desc_producto=="Vuelos" & ciudad.origen=="COR")$ciudad.destino)
+write.csv(vue.destino.COR, file="vuedestinoCOR.csv")
+# Destino mas frecuente para vuelos con origen MDZ
+vue.destino.MDZ <- table(subset(data, desc_producto=="Vuelos" & ciudad.origen=="MDZ")$ciudad.destino)
+write.csv(vue.destino.MDZ, file="vuedestinoMDZ.csv")
+# Destino mas frecuente para vuelos con origen SLA
+vue.destino.SLA <- table(subset(data, desc_producto=="Vuelos" & ciudad.origen=="SLA")$ciudad.destino)
+write.csv(vue.destino.SLA, file="vuedestinoSLA.csv")
+# Destino mas frecuente para vuelos con origen TUC
+vue.destino.TUC <- table(subset(data, desc_producto=="Vuelos" & ciudad.origen=="TUC")$ciudad.destino)
+write.csv(vue.destino.TUC, file="vuedestinoTUC.csv")
+# Destino mas frecuente para vuelos con origen NQN
+vue.destino.NQN <- table(subset(data, desc_producto=="Vuelos" & ciudad.origen=="NQN")$ciudad.destino)
+write.csv(vue.destino.NQN, file="vuedestinoNQN.csv")
+# Destino mas frecuente para vuelos con origen BRC
+vue.destino.BRC <- table(subset(data, desc_producto=="Vuelos" & ciudad.origen=="BRC")$ciudad.destino)
+write.csv(vue.destino.BRC, file="vuedestinoBRC.csv")
+# Destino mas frecuente para vuelos con origen CRD
+vue.destino.CRD <- table(subset(data, desc_producto=="Vuelos" & ciudad.origen=="CRD")$ciudad.destino)
+write.csv(vue.destino.CRD, file="vuedestinoCRD.csv")
+
+
+####IDEAS####
+
+Separar por estaciones o por meses. diferentes destinos segun estacion
+separar por cantidad de pasajeros. o family, single y couple
+separar por duracion
+separar por finde largo y finde corto. flaggear estos findes con feriados de 2013 en adelante.
+
+
+
+#hoteles, histograma de distancia saliendo de bs as
+hot <- subset(data, desc_producto=="Hoteles")
+cru <- subset(data, desc_producto=="Cruceros")
+vue<- subset(data, desc_producto=="Vuelos")
+hist(vue$distancia, breaks=c(0,300,500,1000,1500,2000,2500,3000,4000,5000,10000,20000))
+
+
