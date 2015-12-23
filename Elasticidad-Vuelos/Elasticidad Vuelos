@@ -1,0 +1,455 @@
+setwd("/home/despegar/rstudio_data/vseminario/Beer/")
+setwd("/home/despegar/rstudio_data/mroqueta/")
+
+# Levantamos la data
+#beer <- read.delim("/home/despegar/rstudio_data/vseminario/Beer/beer22k.csv", sep=",", header =T)
+
+beer <- read.delim("/home/despegar/rstudio_data/mroqueta/beer23kR.csv", sep=",", header =T)
+
+# Me quedo solo con las obs. donde el usuario tuvo que decidir entre aceptar y rechazar
+
+beer <- subset(beer, data.booking.price_jump.result %in% c("ACCEPTED","REJECTED"))
+
+beer$data.booking.price_jump.result <- ifelse(beer$data.booking.price_jump.result == "ACCEPTED", 1, 0)
+
+# numeros de cuotas as.numeric
+
+beer <- subset(beer, !Producto.Cuotas %in% c("Múltiples"))
+beer$Producto.Cuotas <- as.numeric(as.character(beer$Producto.Cuotas))
+
+# # Ratio dias de semana y fines de semana
+beer$dateci <- as.Date(strptime(beer$id_dim_tiempo_checkin, "%Y%m%d"))
+beer$dateco <- as.Date(strptime(beer$id_dim_tiempo_checkout , "%Y%m%d"))
+
+#esto me dice el nombre del dia de la semana
+beer$dayci <- weekdays(as.Date(beer$dateci))
+# esto me dice el numero de dia de semana, del 0 al 6, empezando por el domingo = 0 y terminando por sabado = 6
+beer$ndayci <- as.POSIXlt(as.Date(beer$dateci))$wday
+# quiero que el domingo sea 7 en vez de 0
+beer$ndayci <- as.numeric(gsub(0, 7, beer$ndayci))
+# cuantas semanas completas de 7 dias (con dos dias de finde) hay en la duracion del viaje?
+# trunc(duracion/7)
+beer$semanascomp <- trunc(beer$duracion/7)
+# resto de dias fuera de semanas completas:
+beer$resto <- trunc(beer$duracion) - beer$semanascomp * 7
+# cuento dias de fin de semana extras a la semana completa 
+beer$diaextra <- ifelse(beer$ndayci == 7, 1,
+                                   ifelse((beer$resto + beer$ndayci) == 7, 1, 
+                                          ifelse((beer$resto + beer$ndayci) > 7, 2, 0)))
+# Saco el numero de dias de finde (dos por semana completa, mas los dias extra)
+beer$diasfinde <- beer$semanascomp * 2 + beer$diaextra 
+# saco el ratio "dias de finde" / "duracion"
+beer$ratiofinde <- ifelse( (beer$dayci == "Saturday" | beer$dayci == "Sunday" ) & beer$duracion == 0 ,1,
+                          ifelse(beer$duracion == 0, NA, (beer$diasfinde ) / beer$duracion ))
+
+# Borro estas variables
+beer$dayci <- NULL
+beer$ndayci <- NULL
+beer$diaextra <- NULL
+beer$semanascomp  <- NULL
+beer$resto	<- NULL
+beer$id_dim_tiempo_checkin  <- NULL
+beer$id_dim_tiempo_checkout  <- NULL
+beer$diasfinde  <- NULL
+
+
+# Viaje Domestico o Internacional 
+
+# data.itinerary.route me dice origen y destino unidas por un "-"
+# la funcion regexpr me dice el numero de ubicacion de "-" en el string. 
+# substr extrae una parte del string si le indico en que nro. de caracter empezar y terminar.
+# le digo que termine uno antes del "-" para el origen, y que empiece uno despues para el destino
+
+beer$data.itinerary.route <- as.character(beer$data.itinerary.route ) 
+
+beer$origen <- substr(x = beer$data.itinerary.route, start = 1, stop = (regexpr("-", beer$data.itinerary.route, TRUE) -1))
+
+#esta solucion no es perfecta porque cuando hay multiples destinos te da el primero
+
+beer$destino <- ifelse (nchar(beer$data.itinerary.route) == 7, 
+                    substr(x = beer$data.itinerary.route, 
+                           start = (regexpr("-", beer$data.itinerary.route, TRUE) +1), stop = 7 ),
+                    substr(x = beer$data.itinerary.route, 
+                           start = (sapply(gregexpr("-", beer$data.itinerary.route), tail, 1)-3), 
+                           stop = (sapply(gregexpr("-", beer$data.itinerary.route), tail, 1)-1)))
+      
+
+# este sapply me dice el numero de caracter donde esta ubicado el ultimo guion
+# beer$destinoub <- sapply(gregexpr("-", beer$data.itinerary.route), tail, 1)
+# lo uso para traer el ultimo destino, ya que en multiples destinos el ultimo iata es el origen.
+
+# Me bajo una tabla con coordenadas de ciudades de origen y destino y pais de origen y destino
+
+load("/home/despegar/rstudio_data/vseminario/datos utiles/info iatas.rda")
+
+iatas.destino <- subset(iatas.frame[,c(5,7,8,12,14)])
+
+colnames(iatas.destino) <- c("destino", "lat.destino", "lon.destino", "country.destino", "continent.destino")
+
+beer <- merge(beer, iatas.destino, all.x=T, by="destino")
+
+iatas.origen <- subset(iatas.destino[,c(1,2,3,4)])
+
+colnames(iatas.origen) <- c("origen", "lat.origen", "lon.origen", "country.origen")
+
+beer <- merge(beer, iatas.origen, all.x=T, by="origen")
+
+source("/home/despegar/rstudio_data/vseminario/datos utiles/funcion distancia km.R")
+
+beer$lat.origen <- as.numeric(as.character(beer$lat.origen))
+beer$lon.origen <- as.numeric(as.character(beer$lon.origen))
+beer$lat.destino <- as.numeric(as.character(beer$lat.destino))
+beer$lon.destino <- as.numeric(as.character(beer$lon.destino))
+
+beer$distancia <- earth.dist ( beer$lat.origen, beer$lon.origen, beer$lat.destino, beer$lon.destino)
+beer$distancia <- mapply(earth.dist, beer$lat.origen, beer$lon.origen, beer$lat.destino, beer$lon.destino)
+
+beer$lat.origen <- NULL
+beer$lon.origen <- NULL
+beer$lat.destino <- NULL
+beer$lon.destino <- NULL
+
+# quiero ver si las rutas son internacionales o domesticos
+# para eso comparo pais de origen y pais de destino y veo si coinciden
+
+beer$domestico <- ifelse((is.na(beer$country.origen) == T) |(is.na(beer$country.origen) == T) , NA ,
+                         ifelse((beer$country.origen == beer$country.destino ), 1, 0))
+
+# compra en Horario Laboral = 1, hogar = 0
+# dire que horario laboral es de 6 am a 7 pm
+
+beer$compra.hora.laboral <- ifelse((beer$date.hour > 6) 
+                                   & (beer$date.hour < 19) 
+                                   & (beer$date.day_of_week < 6 ), 1 , 0)
+
+# compra durante el finde = 1, en la semana = 0
+
+# date.day_of_week me dice el numero de dia de semana, del 1 al 7, empezando por el lunes = 1 y terminando por domingo = 7
+
+beer$compra.finde <- ifelse(beer$date.day_of_week < 6, 0 , 1)
+
+# hay dos variables iguales que me dicen la cantidad de adultos y la de niños. dejo la data que paso BI
+
+# hay dos variables que dicen la cantidad de cuotas. La info de BI tiene mas informacion
+# pero muchas veces, donde para BI son 0 cuotas, para Beer son mas. Saco el maximo.
+
+beer1$cuotas <-pmax(beer$data.payment_method.installments, beer$Producto.Cuotas, na.rm = TRUE) 
+
+#### Limpio un poco la tabla sacando algunas columnas
+
+beer <- subset(beer, select=c(origen, destino, channel, country, data.booking.pnr, data.booking.price_jump.percentaje,
+data.booking.price_jump.result, data.booking.validating_carrier, data.id, 
+data.itinerary.route, data.itinerary.type, date.day, date.day_of_week, date.hour, date.month, 
+tarifa_con_cargos_usd, anticipacion, duracion, cantidadpasajeros, transaction_code, 
+clasestramosdescripcion, dateci, dateco, ratiofinde, country.destino, continent.destino, 
+country.origen, distancia, domestico, compra.hora.laboral, compra.finde,Cantidad.Adt, Cantidad.Chd, cuotas))
+
+#### Correlaciones ####
+
+# veo las correlaciones entre las variables. solo puedo hacerlo con las numericas. 
+
+beer.num <- subset(beer, select=c(data.booking.price_jump.result, date.hour, tarifa_con_cargos_usd, 
+                                  data.booking.price_jump.percentaje, cuotas, anticipacion, ratiofinde,
+                                  duracion, cantidadpasajeros, domestico, distancia, compra.finde, compra.hora.laboral))
+
+# The presence of missing observations will produce an error. 
+# If use is "complete" then missing values are handled by casewise deletion 
+# Otherwise, by default use = "everything".
+# round es para que se limite a 2 decimales
+
+correlaciones.complete <- round((cor(beer.num, use="complete")), digits=2)
+View(correlaciones)
+
+# If use has the value "pairwise.complete.obs" then the correlation or covariance between each pair 
+# of variables is computed using all complete pairs of observations on those variables. 
+correlaciones.por.pares <- round((cor(beer.num, use="pairwise.complete.obs")), digits=2)
+View(correlaciones.por.pares)
+
+# Producto.Cuotas tiene una correl alta con resultado 
+# -> pago en mas cuotas, mas se diluye ese aumento de precio
+
+# Compra.horario.laboral tiene una correl muy baja negativa (-0.57) con Compra.finde 
+# -> es obvio: horario laboral esta definido como dias habiles (no-finde) entre las 6 y 19 hs
+
+# Producto.Cuotas tiene una correl baja (-0.015) con tarifa_con_cargos_usd 
+# -> raro, hubiera esperado una relacion fuerte entre mayor precio y mas cuotas. ploteando tiene una forma como de y=b^x
+plot(beer$Producto.Cuotas, beer$tarifa_con_cargos_usd, xlim=c(0,25), ylim=c(0,10000))
+
+# tarifa_con_cargos_usd tiene una correl positiva (0.5) con cantidadpasajeros (obvio) , 
+# positiva (0.2) con duracion y positiva (0.28) con anticipacion 
+# Duracion tiene correl positiva (0.26) con distancia
+# (cuanto mas va a gastar, antes compra y viaja por mas dias... para "aprovechar" vuelo caro/distante?) 
+
+# tarifa_con_cargos_usd tiene una correl positiva (0.32) con distancia, 
+# y negativa (-0.35) con domestico (en parte por menor distancia, en parte por menos impuestos si es domestico) 
+
+# data.booking.price_jump.percentaje tiene correl positiva (0.11) con distancia -> no se por que
+
+# anticipacion tiene correl negativa (-0.32) con domestico 
+# -> pueden ser mas vuelos de fin de semana y por trabajo, que se compran con menos anticipacion?
+# anticipacion tiene correl positiva (0.18) con duracion y (0.24) con cantidadpasajeros
+# -> si es un viaje de mucha gente o familias, necesita mas tiempo para coordinar y por ser mas gasto, busca antes
+# -> si es un viaje mas largo, va a gastar mas y anticipa mas. tal vez debe coordinar varios vuelos u hoteles
+
+
+
+#### Regresiones ####
+
+# Regresion 1: <-- MODELO BASE!!
+#regresores son todas las numericas 
+
+glm0 <- glm(data.booking.price_jump.result ~ date.hour + tarifa_con_cargos_usd + ratiofinde + 
+              data.booking.price_jump.percentaje + cuotas + anticipacion + 
+              duracion + cantidadpasajeros + domestico + distancia + compra.finde + compra.hora.laboral,
+            data = beer, family = binomial )
+
+summary(glm0)
+
+glm0.fitted <- predict(glm, type = "response")
+
+# Regresion 2
+# regresores son % de aumento de precio y precio final en dolares
+
+glm2 <- glm(data.booking.price_jump.result ~ data.booking.price_jump.percentaje 
+                      + tarifa_con_cargos_usd, data = beer, family = binomial )
+summary(glm2)
+
+# Los coeficientes se interpretan como "si la variable explicativa (suba porcentual) aumenta en una unidad, 
+# el logaritmo de la probabilidad de que el usuario acepte baja en 0.062 unidades.
+# alternativamente, puedo pasar los coefs a algo mas facil de interpretar:
+# exp(glm2$coefficients)
+# Ahora se interpreta como "por cada unidad que sube la variable explicativa (un 1% de aumento en la tarifa)
+# la probabilidad de que el usuario acepte baja en (0.93957-1) = 0.06 = 6 %.
+
+
+# Regresion 3:  
+# probando diferentes formas sacando las no significativas
+# domestico y distancia son las dos signif pero tenian correl. pruebo sacarlas de a una
+# si saco domestico y distancia, que tienen correl alta con precio en dolares, precio en dolares se hace signif.
+
+glm3 <- glm(data.booking.price_jump.result ~ tarifa_con_cargos_usd + data.booking.price_jump.percentaje 
+                       + cuotas + anticipacion + compra.hora.laboral, data = beer, family = binomial )
+
+summary(glm3)
+
+# Regresion 4
+# probando diferentes formas sacando las no significativas
+
+glm4 <- glm(data.booking.price_jump.result ~ tarifa_con_cargos_usd + data.booking.price_jump.percentaje 
+                       + Producto.Cuotas + anticipacion + compra.hora.laboral + continent.destino,
+                       data = beer, family = binomial )
+
+# me quedo solo con los casos completos
+beer.num.complete <- beer.num[complete.cases(beer.num),]
+
+
+# Regresion 5
+
+glm5 <- glm(data.booking.price_jump.result ~ data.booking.price_jump.percentaje + Producto.Cuotas + anticipacion + 
+              + domestico + compra.hora.laboral,
+            data = beer, family = binomial )
+
+summary(glm5)
+
+# Regresion 6
+
+glm6 <- glm(data.booking.price_jump.result ~ data.booking.price_jump.percentaje + Producto.Cuotas + anticipacion + 
+              + tarifa_con_cargos_usd + compra.hora.laboral,
+            data = beer, family = binomial )
+
+summary(glm6)
+
+# Regresion 7
+# quiero ver cuanto explica el cambio de precio por si solo
+glm7 <- glm(data.booking.price_jump.result ~ data.booking.price_jump.percentaje,
+            data = beer, family = binomial )
+
+summary(glm7)
+
+#### Regresiones por países ####
+
+beer.BR <- subset(beer, country %in% c("BR"))
+beer.AR <- subset(beer, country %in% c("AR"))
+beer.CO <- subset(beer, country %in% c("CO"))
+beer.CL <- subset(beer, country %in% c("CL"))
+beer.MX <- subset(beer, country %in% c("MX"))
+
+# Modelo Base para ARGENTINA
+
+glm0.AR <- glm(data.booking.price_jump.result ~ tarifa_con_cargos_usd + ratiofinde + 
+                 data.booking.price_jump.percentaje + cuotas + anticipacion + 
+                 duracion + cantidadpasajeros + domestico + distancia + compra.finde + compra.hora.laboral,
+               data = beer.AR, family = binomial )
+
+summary(glm0.AR)
+
+fitcompared.glm0.AR <- merge(predict(glm0.AR, type = "response"), beer$data.booking.price_jump.result, by.x="row.names", by.y="row.names", all.x=T)
+
+names(fitcompared.glm0.AR) <- c("row.names","predicted", "result") 
+
+# Modelo Final para ARGENTINA
+
+glmF.AR <- glm(data.booking.price_jump.result ~ tarifa_con_cargos_usd +  
+                 data.booking.price_jump.percentaje + cuotas + domestico + compra.hora.laboral,
+               data = beer.AR, family = binomial )
+
+summary(glmF.AR)
+
+fitcompared.glmF.AR <- merge(predict(glmF.AR, type = "response"), beer$data.booking.price_jump.result, by.x="row.names", by.y="row.names", all.x=T)
+
+names(fitcompared.glmF.AR) <- c("row.names","predicted", "result") 
+
+# Modelo Base para BRASIL
+
+glm0.BR <- glm(data.booking.price_jump.result ~ date.hour + tarifa_con_cargos_usd + ratiofinde + 
+                 data.booking.price_jump.percentaje + cuotas + anticipacion + 
+                 duracion + cantidadpasajeros + domestico + distancia + compra.finde + compra.hora.laboral,
+               data = beer.BR, family = binomial )
+
+summary(glm0.BR)
+
+fitcompared.glm0.BR <- merge(predict(glm0.BR, type = "response"), beer$data.booking.price_jump.result, by.x="row.names", by.y="row.names", all.x=T)
+
+names(fitcompared.glm0.BR) <- c("row.names","predicted", "result") 
+
+# Modelo Final para BRASIL
+
+glmF.BR <- glm(data.booking.price_jump.result ~ tarifa_con_cargos_usd + 
+                 data.booking.price_jump.percentaje + cuotas + anticipacion + 
+                 duracion + domestico + distancia + compra.finde ,
+               data = beer.BR, family = binomial )
+
+summary(glmF.BR)
+
+fitcompared.glmF.BR <- merge(predict(glmF.BR, type = "response"), beer$data.booking.price_jump.result, by.x="row.names", by.y="row.names", all.x=T)
+
+names(fitcompared.glmF.BR) <- c("row.names","predicted", "result") 
+
+# Modelo Base para cada COLOMBIA
+
+glm0.CO <- glm(data.booking.price_jump.result ~ date.hour + tarifa_con_cargos_usd + ratiofinde + 
+                 data.booking.price_jump.percentaje + cuotas + anticipacion + 
+                 duracion + cantidadpasajeros + domestico + distancia + compra.finde + compra.hora.laboral,
+               data = beer.CO, family = binomial )
+
+summary(glm0.CO)
+
+fitcompared.glm0.CO <- merge(predict(glm0.CO, type = "response"), beer$data.booking.price_jump.result, by.x="row.names", by.y="row.names", all.x=T)
+
+names(fitcompared.glm0.CO) <- c("row.names","predicted", "result") 
+
+# Modelo Final para  COLOMBIA
+
+glmF.CO <- glm(data.booking.price_jump.result ~   
+                 data.booking.price_jump.percentaje + cuotas + anticipacion + 
+                 domestico + compra.hora.laboral,
+               data = beer.CO, family = binomial )
+
+summary(glmF.CO)
+
+fitcompared.glmF.CO <- merge(predict(glmF.CO, type = "response"), beer$data.booking.price_jump.result, by.x="row.names", by.y="row.names", all.x=T)
+
+names(fitcompared.glmF.CO) <- c("row.names","predicted", "result") 
+
+# Modelo Base para CHILE
+
+glm0.CL <- glm(data.booking.price_jump.result ~ date.hour + tarifa_con_cargos_usd + ratiofinde + 
+                 data.booking.price_jump.percentaje + cuotas + anticipacion + 
+                 duracion + cantidadpasajeros + domestico + distancia + compra.finde + compra.hora.laboral,
+               data = beer.CL, family = binomial )
+
+summary(glm0.CL)
+
+fitcompared.glm0.CL <- merge(predict(glm0.CL, type = "response"), beer$data.booking.price_jump.result, by.x="row.names", by.y="row.names", all.x=T)
+
+names(fitcompared.glm0.CL) <- c("row.names","predicted", "result") 
+
+# Modelo Final para CHILE
+
+glmF.CL <- glm(data.booking.price_jump.result ~ ratiofinde + 
+                 data.booking.price_jump.percentaje + cuotas + anticipacion + 
+                 domestico , data = beer.CL, family = binomial )
+
+summary(glmF.CL)
+
+fitcompared.glmF.CL <- merge(predict(glmF.CL, type = "response"), beer$data.booking.price_jump.result, by.x="row.names", by.y="row.names", all.x=T)
+
+names(fitcompared.glmF.CL) <- c("row.names","predicted", "result") 
+
+# Modelo Base para MEXICO
+
+glm0.MX <- glm(data.booking.price_jump.result ~ date.hour + tarifa_con_cargos_usd + ratiofinde + 
+                 data.booking.price_jump.percentaje + cuotas + anticipacion + 
+                 duracion + cantidadpasajeros + domestico + distancia + compra.finde + compra.hora.laboral,
+               data = beer.MX, family = binomial )
+
+summary(glm0.MX)
+
+fitcompared.glm0.MX <- merge(predict(glm0.MX, type = "response"), beer$data.booking.price_jump.result, by.x="row.names", by.y="row.names", all.x=T)
+
+names(fitcompared.glm0.MX) <- c("row.names","predicted", "result") 
+
+# Modelo Final para MEXICO
+
+glmF.MX <- glm(data.booking.price_jump.result ~  data.booking.price_jump.percentaje + cuotas + domestico,
+               data = beer.MX, family = binomial )
+
+summary(glmF.MX)
+
+fitcompared.glmF.MX <- merge(predict(glmF.MX, type = "response"), beer$data.booking.price_jump.result, by.x="row.names", by.y="row.names", all.x=T)
+
+names(fitcompared.glmF.MX) <- c("row.names","predicted", "result")
+
+##### Otras variables #### 
+
+# otras variables que estaría bueno tener
+# > disponibilidad y cantidad de vuelos alternativos 
+# > nac o internac
+# > pais
+# > dias hab / dias finde -> NECESITO FECHA DE CI o CO
+
+# fitted <- fitted.values(price.jump.glm)
+# fitted01 <- ifelse(fitted > 05, 1, 0)
+
+predict7 <- predict(glm7, type="response")
+predict301 <- ifelse(predict3 > 0.5, 1, 0)
+
+pred7 <- data.frame(predict7)
+
+write.csv(beer, file = "beertable.csv")
+
+
+
+
+
+
+
+
+
+glm2.fitted <- predict(glm2, type = "response")
+
+#### Graficos #####
+
+# funcion grafico.
+# http://cran.r-project.org/web/packages/HSAUR/vignettes/Ch_logistic_regression_glm.pdf
+
+myplot <- function(glm.fitted) {
+  smalljump <- beer$data.booking.price_jump.percentaje < 3
+  plot(beer$education, glm.fitted, type = "n", ylab = "Probability of accepting", xlab = "Education", ylim = c(0,1))
+  lines(beer$education[!smalljump], glm.fitted[!smalljump], lty = 1)
+  lines(beer$education[smalljump], glm.ftitted[smalljump], lty = 2)
+  lgtxt <- c("Fitted (Males)", "Fitted (Females)")
+  legend("topright", lgtxt, lty = 1:2, bty = "n")
+  y <- beer$agree / (beer$agree + beer$disagree)
+  text(beer$education, y, ifelse(smalljump, "\\VE", "\\MA"), family = "HersheySerif", cex = 1.25)
+  
+}
+
+
+myplot(glm2.fitted)
+
+
+
+res2 <- residuals(glm2, type = "deviance")
+plot(predict(glm2), res2, xlab="Fitted values", ylab = "Residuals", ylim = max(abs(res2)) * c(-1,1))
+abline(h = 0, lty = 2)
