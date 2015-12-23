@@ -1,0 +1,206 @@
+# dia del analisis
+hoy <- "2015-11-22"
+
+#### preparo la data####
+setwd("/home/despegar/rstudio_data/vseminario/Prueba cajas home/")
+
+# Levantamos la data. 
+#userids <- read.csv("C:/Users/abettati/Dropbox/Alertas/alertas sin presupuesto AR ago-sep 15.csv", sep=",", header =T, stringsAsFactors=FALSE)
+# userids <- read.csv("/home/despegar/rstudio_data/vseminario/alertas sin presupuesto AR ago-sep 15.csv", sep=",", header =T, stringsAsFactors=FALSE)
+eventsnl <- read.csv("/home/despegar/rstudio_data/vseminario/Prueba cajas home/eventosNL3.csv", sep=",", header =T, stringsAsFactors=FALSE)
+clickofertas <- read.csv("/home/despegar/rstudio_data/vseminario/Prueba cajas home/clickofertas3.csv", sep=",", header =T, stringsAsFactors=FALSE)
+
+#sacamos duplicados
+eventsnl  <- unique(eventsnl)
+clickofertas  <- unique(clickofertas)
+
+setnames(eventsnl, c("trackerid", "fecha"))
+setnames(clickofertas, c("trackerid", "fecha"))
+
+#convertimosen cracter por las dudas
+eventsnl$trackerid <- as.character(eventsnl$trackerid)
+clickofertas$trackerid <- as.character(clickofertas$trackerid)
+
+#fechas con formato fecha
+eventsnl$fecha <- as.Date(strptime(eventsnl$fecha, "%d/%m/%Y"))
+clickofertas$fecha <- as.Date(strptime(clickofertas$fecha, "%d/%m/%Y"))
+
+# FUNCION GET EMAIL para obtener el email de estos user ids
+source("/home/despegar/rstudio_data/vseminario/Funciones/funcion get emails anto.R")
+library("RJSONIO")
+clus <- makeCluster(10)
+clusterExport(clus, list=c("getEmails", "fromJSON", "getURL"))
+eventsnl.mail <- parLapply(clus,eventsnl$trackerid, getEmails)
+clickofertas.mail <- parLapply(clus,clickofertas$trackerid, getEmails)
+stopCluster(clus)
+eventsnl.mail <- do.call(rbind.data.frame, eventsnl.mail)
+clickofertas.mail <- do.call(rbind.data.frame, clickofertas.mail)
+
+# % de gente que clickeo en la caja de NL pero que no dejo su email
+nrow(eventsnl.mail[!duplicated(eventsnl.mail$id),])/nrow(eventsnl)*100
+# 67.75 %
+# 76.11 %
+
+eventsnl.mail <- subset (eventsnl.mail, is.na(id)==F)
+clickofertas.mail <- subset (clickofertas.mail, is.na(id)==F)
+
+# Ahora para cada trackerid busco la fecha de compra mas reciente
+source("/home/despegar/rstudio_data/vseminario/Funciones/funcion get last buy date.R")
+library("RJSONIO")
+clus <- makeCluster(10)
+clusterExport(clus, list=c("getLastBuyDate", "fromJSON", "getURL"))
+eventsnl.buydate <- parLapply(clus,eventsnl$trackerid, getLastBuyDate)
+clickofertas.buydate <- parLapply(clus,clickofertas$trackerid, getLastBuyDate)
+stopCluster(clus)
+eventsnl.buydate <- do.call(rbind.data.frame, eventsnl.buydate)
+clickofertas.buydate <- do.call(rbind.data.frame, clickofertas.buydate)
+
+# Ahora para cada mail busco r, f, m y clv
+source("/home/despegar/rstudio_data/vseminario/Funciones/funcion get RFM and CLV.R")
+library("RJSONIO")
+clus <- makeCluster(10)
+clusterExport(clus, list=c("fromJSON","getRFM", "getURL"))
+eventsnl.rfm <- parLapply(clus, eventsnl.mail$email, getRFM)
+clickofertas.rfm <- parLapply(clus, clickofertas.mail$email, getRFM)
+stopCluster(clus)
+eventsnl.rfm <- as.data.frame(eventsnl.rfm)
+eventsnl.rfm <- t(eventsnl.rfm[,1:ncol(eventsnl.rfm)])
+eventsnl.rfm <- as.data.frame(eventsnl.rfm)
+rownames(eventsnl.rfm) <- NULL
+clickofertas.rfm <- as.data.frame(clickofertas.rfm)
+clickofertas.rfm <- t(clickofertas.rfm[,1:ncol(clickofertas.rfm)])
+clickofertas.rfm <- as.data.frame(clickofertas.rfm)
+rownames(clickofertas.rfm) <- NULL
+
+rm(clus, getEmails, getLastBuyDate, getRFM)
+
+#armo la tabla con todo: todos los trackerids, los mails, rfm y lastbuydate
+eventsnl.merge <- merge (eventsnl.mail, eventsnl.rfm, by.x="email", by.y="mail", all.x=T)
+eventsnl.merge <- merge (eventsnl.merge, eventsnl.buydate, by="id", all.x=T)
+eventsnl.merge <- merge (eventsnl, eventsnl.merge, by.x="trackerid", by.y="id", all.x=T)
+
+clickofertas.merge <- merge (clickofertas.mail, clickofertas.rfm, by.x="email", by.y="mail", all.x=T)
+clickofertas.merge <- merge (clickofertas.merge, clickofertas.buydate, by="id", all.x=T)
+clickofertas.merge <- merge (clickofertas, clickofertas.merge, by.x="trackerid", by.y="id", all.x=T)
+
+# saco algunos casos raros
+eventsnl.merge <- subset(eventsnl.merge, nchar(trackerid) == 36)
+clickofertas.merge <- subset(clickofertas.merge, nchar(trackerid) == 36)
+
+# paso a character
+eventsnl.merge$r <- as.numeric(as.character(eventsnl.merge$r))
+eventsnl.merge$f <- as.numeric(as.character(eventsnl.merge$f))
+eventsnl.merge$m <- as.numeric(as.character(eventsnl.merge$m))
+eventsnl.merge$clv <- as.numeric(as.character(eventsnl.merge$clv))
+eventsnl.merge$email <- as.character(eventsnl.merge$email)
+clickofertas.merge$r <- as.numeric(as.character(clickofertas.merge$r))
+clickofertas.merge$f <- as.numeric(as.character(clickofertas.merge$f))
+clickofertas.merge$m <- as.numeric(as.character(clickofertas.merge$m))
+clickofertas.merge$clv <- as.numeric(as.character(clickofertas.merge$clv))
+clickofertas.merge$email <- as.character(clickofertas.merge$email)
+
+# tiempo que paso desde que hicieron el click
+clickofertas.merge$tiempo.desde.click <- as.numeric(as.Date(hoy)) - as.numeric(as.Date(clickofertas.merge$fecha))
+eventsnl.merge$tiempo.desde.click <- as.numeric(as.Date(hoy)) - as.numeric(as.Date(eventsnl.merge$fecha))
+
+save(clickofertas.merge, file="clickofertas con fecha_id_mail_rfm_buyydate.rda")
+save(eventsnl.merge, file="eventsnl con fecha_id_mail_rfm_buyydate.rda")
+
+#### buyers post suscripcion a NL ####
+# subgrupo que de personas unicas que tienen compras desde el 1 de octubre de 2015
+eventsnl.recentbuyers <- subset(eventsnl.merge, is.na(lastbuydate)==F)
+eventsnl.recentbuyers <- eventsnl.recentbuyers[order(eventsnl.recentbuyers$lastbuydate, decreasing = TRUE ), ]
+eventsnl.recentbuyers <- subset(eventsnl.recentbuyers, lastbuydate >= fecha)
+eventsnl.recentbuyers <- eventsnl.recentbuyers[!duplicated(eventsnl.recentbuyers$trackerid),]
+
+# subgrupo de gente que hizo una compra pero no reciente = clv > 0 y order by r
+eventsnl.merge2 <- subset(eventsnl.merge, !eventsnl.merge$trackerid %in% eventsnl.recentbuyers$trackerid)
+eventsnl.buyers <- subset(eventsnl.merge2, clv>0 | lastbuydate < fecha)
+eventsnl.buyers <- eventsnl.buyers[order(eventsnl.buyers$r), ]
+eventsnl.buyers <- eventsnl.buyers[!duplicated(eventsnl.buyers$trackerid),]
+
+# subgrupo de gente que no hizo compras
+eventsnl.merge2 <- subset(eventsnl.merge2, !eventsnl.merge2$trackerid %in% eventsnl.buyers$trackerid)
+eventsnl.notbuyers <- eventsnl.merge2[!duplicated(eventsnl.merge2$trackerid),]
+
+#tengo categorizados a todos los unique users?
+identical(nrow(eventsnl.merge[!duplicated(eventsnl.merge$trackerid),]),(nrow(eventsnl.buyers)+nrow(eventsnl.notbuyers)+nrow(eventsnl.recentbuyers)))
+
+#if true, borrar
+rm(eventsnl, eventsnl.merge2, eventsnl.merge, eventsnl.mail, eventsnl.rfm, eventsnl.buydate)
+
+#### buyers post click en oferta ####
+
+# subgrupo que de personas unicas que tienen compras desde el 1 de octubre de 2015
+clickofertas.recentbuyers <- subset(clickofertas.merge, is.na(lastbuydate)==F)
+clickofertas.recentbuyers  <- clickofertas.recentbuyers [order(clickofertas.recentbuyers $lastbuydate, decreasing = TRUE ), ]
+clickofertas.recentbuyers  <- subset(clickofertas.recentbuyers , lastbuydate >= fecha)
+clickofertas.recentbuyers  <- clickofertas.recentbuyers [!duplicated(clickofertas.recentbuyers $trackerid),]
+
+# subgrupo de gente que hizo una compra pero no reciente = clv > 0 y order by r
+clickofertas.merge2 <- subset(clickofertas.merge, !clickofertas.merge$trackerid %in% clickofertas.recentbuyers$trackerid)
+clickofertas.buyers <- subset(clickofertas.merge2, clv>0 | lastbuydate < fecha)
+clickofertas.buyers <- clickofertas.buyers[order(clickofertas.buyers$r), ]
+clickofertas.buyers <- clickofertas.buyers[!duplicated(clickofertas.buyers$trackerid),]
+
+# subgrupo de gente que no hizo compras
+clickofertas.merge2 <- subset(clickofertas.merge2, !clickofertas.merge2$trackerid %in% clickofertas.buyers$trackerid)
+clickofertas.notbuyers <- clickofertas.merge2[!duplicated(clickofertas.merge2$trackerid),]
+
+#tengo categorizados a todos los unique users?
+identical(nrow(clickofertas.merge[!duplicated(clickofertas.merge$trackerid),]),(nrow(clickofertas.buyers)+nrow(clickofertas.notbuyers)+nrow(clickofertas.recentbuyers)))
+
+#if true, borrar
+rm(clickofertas, clickofertas.merge2, clickofertas.merge, clickofertas.mail, clickofertas.rfm, clickofertas.buydate)
+
+#uno todo
+clickofertas <- rbind(clickofertas.recentbuyers, clickofertas.buyers, clickofertas.notbuyers)
+eventsnl <- rbind(eventsnl.recentbuyers, eventsnl.buyers, eventsnl.notbuyers)
+
+# tiempo hasta compra
+eventsnl$tiempohastacompra <- round(as.numeric(eventsnl$lastbuydate - eventsnl$fecha), digits=0)
+eventsnl$tiempohastacompra <- ifelse (eventsnl$tiempohastacompra <0, NA, eventsnl$tiempohastacompra)
+clickofertas$tiempohastacompra <- round(as.numeric(clickofertas$lastbuydate - clickofertas$fecha), digits=0)
+clickofertas$tiempohastacompra <- ifelse (clickofertas$tiempohastacompra <0, NA, clickofertas$tiempohastacompra)
+
+# tiempos desde click para segmentar
+compro dentro de los cicno dias / gente con cinco dias desde el click
+nrow(subset(eventsnl, tiempohastacompra <= 5 & is.na(tiempohastacompra)==F))/nrow(subset(eventsnl, tiempo.desde.click <= max(eventsnl$tiempo.desde.click))) 
+
+nrow(subset(eventsnl, tiempo.desde.click <= max(eventsnl$tiempo.desde.click)))
+#### Analisis: conversion ####
+#¿ que % de la gente se suscribio al NL y luego compro?
+nrow(eventsnl.recentbuyers)/(nrow(eventsnl))
+# 5.03%
+#¿ que % de la gente clickeo una caja de ofertas y luego compro?
+nrow(clickofertas.recentbuyers)/(nrow(clickofertas))
+#  5.64%
+
+
+# ¿cuanto tardan en comprar los que se suscriben al NL?
+eventsnl.recentbuyers$tiempohastacompra <- round(as.numeric(eventsnl.recentbuyers$lastbuydate - eventsnl.recentbuyers$fecha), digits=0)
+View(table(eventsnl.recentbuyers$tiempohastacompra)/nrow(eventsnl.recentbuyers)*100)
+# ¿cuanto tardan en comprar los que se hacen click en una oferta?
+clickofertas.recentbuyers$tiempohastacompra <- round(as.numeric(clickofertas.recentbuyers$lastbuydate - clickofertas.recentbuyers$fecha), digits=0)
+View(table(clickofertas.recentbuyers$tiempohastacompra)/nrow(clickofertas.recentbuyers)*100)
+
+plot(table(clickofertas.recentbuyers$tiempohastacompra) ,table(eventsnl.recentbuyers$tiempohastacompra ))
+
+hist(eventsnl.recentbuyers$tiempohastacompra, freq=FALSE, col="blue",border="blue",breaks=20 )
+hist(clickofertas.recentbuyers$tiempohastacompra, add=T, freq=FALSE,border="red",breaks=20)
+
+# ¿para que anticipacion compran?
+all$anticipacion <- round(as.numeric(all$fecha_ci - as.Date(all$fecha_reserva)), digits=0)
+
+
+# para cada usuario tengo si compro y el tiempo hasta comprar.
+# para el dia uno tomo en cuenta a todos y divido los compradores con distancia de un dia dividido todos
+#¿ que % de la gente clickeo una caja de ofertas y compro en los primeros x dias?
+nrow(subset(eventsnl.recentbuyers, lastbuydate < "2015-10-27"))/(nrow(eventsnl.buyers)+nrow(eventsnl.notbuyers)+nrow(eventsnl.recentbuyers))
+#  2.40%
+#¿ que % de la gente se suscribio al NL y compro en los primeros x dias?
+nrow(subset(clickofertas.recentbuyers, lastbuydate < "2015-10-27"))/(nrow(clickofertas.buyers)+nrow(clickofertas.notbuyers)+nrow(clickofertas.recentbuyers))
+#  0.11%
+
+(nrow(eventsnl.buyers)+nrow(eventsnl.notbuyers)+nrow(eventsnl.recentbuyers))
+(nrow(clickofertas.buyers)+nrow(clickofertas.notbuyers)+nrow(clickofertas.recentbuyers))
