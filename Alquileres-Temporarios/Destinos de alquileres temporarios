@@ -1,0 +1,817 @@
+# Seteamos la ruta donde se van a descargar los archivos
+setwd("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/")
+
+#### Descargamos la data ####
+getReduction("PRODUCT","RENTALS",20151213)
+getReduction("PRODUCT","VACATION RENTALS",20151213)
+getReduction("PRODUCT","VACATIONRENTAL",20151213)
+
+getReduction("PRODUCT","RENTALS",20151212)
+getReduction("PRODUCT","VACATION RENTALS",20151212)
+getReduction("PRODUCT","VACATIONRENTAL",20151212)
+
+getReduction("PRODUCT","RENTALS",20151211)
+getReduction("PRODUCT","VACATION RENTALS",20151211)
+getReduction("PRODUCT","VACATIONRENTAL",20151211)
+
+getReduction("PRODUCT","RENTALS",20151210)
+getReduction("PRODUCT","VACATION RENTALS",20151210)
+getReduction("PRODUCT","VACATIONRENTAL",20151210)
+
+getReduction("PRODUCT","RENTALS",20151209)
+getReduction("PRODUCT","VACATION RENTALS",20151209)
+getReduction("PRODUCT","VACATIONRENTAL",20151209)
+
+getReduction("PRODUCT","RENTALS",20151208)
+getReduction("PRODUCT","VACATION RENTALS",20151208)
+getReduction("PRODUCT","VACATIONRENTAL",20151208)
+
+getReduction("PRODUCT","RENTALS",20151207)
+getReduction("PRODUCT","VACATION RENTALS",20151207)
+getReduction("PRODUCT","VACATIONRENTAL",20151207)
+
+getReduction("PRODUCT","RENTALS",20151206)
+getReduction("PRODUCT","VACATION RENTALS",20151206)
+getReduction("PRODUCT","VACATIONRENTAL",20151206)
+
+getReduction("PRODUCT","RENTALS",20151205)
+getReduction("PRODUCT","VACATION RENTALS",20151205)
+getReduction("PRODUCT","VACATIONRENTAL",20151205)
+
+getReduction("PRODUCT","RENTALS",20151204)
+getReduction("PRODUCT","VACATION RENTALS",20151204)
+getReduction("PRODUCT","VACATIONRENTAL",20151204)
+
+getReduction("PRODUCT","RENTALS",20151203)
+getReduction("PRODUCT","VACATION RENTALS",20151203)
+getReduction("PRODUCT","VACATIONRENTAL",20151203)
+
+getReduction("PRODUCT","RENTALS",20151202)
+getReduction("PRODUCT","VACATION RENTALS",20151202)
+getReduction("PRODUCT","VACATIONRENTAL",20151202)
+
+getReduction("PRODUCT","RENTALS",20151201)
+getReduction("PRODUCT","VACATION RENTALS",20151201)
+getReduction("PRODUCT","VACATIONRENTAL",20151201)
+
+getReduction("PRODUCT","RENTALS",20151130)
+getReduction("PRODUCT","VACATION RENTALS",20151130)
+getReduction("PRODUCT","VACATIONRENTAL",20151130)
+
+getReduction("PRODUCT","RENTALS",20151129)
+getReduction("PRODUCT","VACATION RENTALS",20151129)
+getReduction("PRODUCT","VACATIONRENTAL",20151129)
+
+getReduction("PRODUCT","RENTALS",20151128)
+getReduction("PRODUCT","VACATION RENTALS",20151128)
+getReduction("PRODUCT","VACATIONRENTAL",20151128)
+
+getReduction("PRODUCT","RENTALS",20151127)
+getReduction("PRODUCT","VACATION RENTALS",20151127)
+getReduction("PRODUCT","VACATIONRENTAL",20151127)
+
+getReduction("PRODUCT","RENTALS",20151126)
+getReduction("PRODUCT","VACATION RENTALS",20151126)
+getReduction("PRODUCT","VACATIONRENTAL",20151126)
+
+getReduction("PRODUCT","RENTALS",20151125)
+getReduction("PRODUCT","VACATION RENTALS",20151125)
+getReduction("PRODUCT","VACATIONRENTAL",20151125)
+
+getReduction("PRODUCT","RENTALS",20151124)
+getReduction("PRODUCT","VACATION RENTALS",20151124)
+getReduction("PRODUCT","VACATIONRENTAL",20151124)
+
+getReduction("PRODUCT","RENTALS",20151122)
+getReduction("PRODUCT","VACATION RENTALS",20151122)
+getReduction("PRODUCT","VACATIONRENTAL",20151122)
+
+getReduction("PRODUCT","RENTALS",20151121)
+getReduction("PRODUCT","VACATION RENTALS",20151121)
+getReduction("PRODUCT","VACATIONRENTAL",20151121)
+
+getReduction("PRODUCT","RENTALS",20151120)
+getReduction("PRODUCT","VACATION RENTALS",20151120)
+getReduction("PRODUCT","VACATIONRENTAL",20151120)
+
+getReduction("PRODUCT","RENTALS",20151119)
+getReduction("PRODUCT","VACATION RENTALS",20151119)
+getReduction("PRODUCT","VACATIONRENTAL",20151119)
+
+getReduction("PRODUCT","RENTALS",20151118)
+getReduction("PRODUCT","VACATION RENTALS",20151118)
+getReduction("PRODUCT","VACATIONRENTAL",20151118)
+
+getReduction("PRODUCT","RENTALS",20151117)
+getReduction("PRODUCT","VACATION RENTALS",20151117)
+getReduction("PRODUCT","VACATIONRENTAL",20151117)
+
+getReduction("PRODUCT","RENTALS",20151116)
+getReduction("PRODUCT","VACATION RENTALS",20151116)
+getReduction("PRODUCT","VACATIONRENTAL",20151116)
+
+getReduction("PRODUCT","RENTALS",20151115)
+getReduction("PRODUCT","VACATION RENTALS",20151115)
+getReduction("PRODUCT","VACATIONRENTAL",20151115)
+
+getReduction("PRODUCT","RENTALS",20151114)
+getReduction("PRODUCT","VACATION RENTALS",20151114)
+getReduction("PRODUCT","VACATIONRENTAL",20151114)
+
+
+# Levantamos la data. aclare que no los traiga como factors porque me salian muchos warnings al hacer el rbind
+rentals_1 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151213-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_2 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151212-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_3 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151211-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_4 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151210-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_5 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151209-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_6 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151208-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_7 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151207-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_8 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151206-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_9 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151205-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_10 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151204-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_11 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151203-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_12 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151202-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_13 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151201-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_14 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151130-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_15 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151129-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_16 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151128-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_17 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151127-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_18 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151126-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_19 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151125-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_20 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151124-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_21 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151123-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_22 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151122-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_23 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151121-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_24 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151120-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_25 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151119-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_26 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151118-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_27 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151117-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_28 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151116-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_29 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151115-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+rentals_30 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151114-DATA_UPA_PRODUCT_RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+
+#une todo lo que empieza en rentals_
+rentals <- do.call(rbind, mget(ls(pattern = "^rentals_[0-9]+$")))
+
+#borra todo lo que empieza en inrentals_s_
+rm(list=names(mget(ls(pattern = "^rentals_[0-9]+$"))))
+
+vac.rentals_1 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151213-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_2 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151212-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_3 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151211-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_4 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151210-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_5 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151209-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_6 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151208-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_7 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151207-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_8 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151206-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_9 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151205-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_10 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151204-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_11 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151203-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_12 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151202-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_13 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151201-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_14 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151130-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_15 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151129-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_16 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151128-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_17 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151127-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_18 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151126-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_19 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151125-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_20 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151124-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_21 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151123-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_22 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151122-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_23 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151121-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_24 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151120-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_25 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151119-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_26 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151118-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_27 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151117-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_28 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151116-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_29 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151115-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vac.rentals_30 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151114-DATA_UPA_PRODUCT_VACATION RENTALS.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+
+#une todo lo que empieza en vac.rentals_
+vac.rentals <- do.call(rbind, mget(ls(pattern = "^vac.rentals_[0-9]+$")))
+
+#borra todo lo que empieza en vac.rentals_
+rm(list=names(mget(ls(pattern = "^vac.rentals_[0-9]+$"))))
+
+vacrentals_1 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151213-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_2 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151212-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_3 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151211-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_4 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151210-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_5 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151209-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_6 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151208-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_7 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151207-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_8 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151206-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_9 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151205-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_10 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151204-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_11 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151203-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_12 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151202-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_13 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151201-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_14 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151130-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_15 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151129-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_16 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151128-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_17 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151127-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_18 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151126-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_19 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151125-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_20 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151124-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_21 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151123-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_22 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151122-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_23 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151121-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_24 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151120-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_25 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151119-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_26 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151118-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_27 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151117-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_28 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151116-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_29 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151115-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+vacrentals_30 <- read.delim("/home/despegar/rstudio_data/vseminario/Oferta Alquileres Temporarios/20151114-DATA_UPA_PRODUCT_VACATIONRENTAL.txt", sep="\t", header =T, stringsAsFactors=FALSE)
+
+#une todo lo que empieza en vacrentals_
+vacrentals <- do.call(rbind, mget(ls(pattern = "^vacrentals_[0-9]+$")))
+
+#borra todo lo que empieza en vacrentals_
+rm(list=names(mget(ls(pattern = "^vacrentals_[0-9]+$"))))
+
+#rbind para que solo quede una table
+rentals <- rbind(vac.rentals, vacrentals)
+
+#### Preparamos Variables ####
+rentals <- rentals[,c("FECHA","HORA","userid","flow","country","source","ref","url","destino_IATA","ci","co","GB")]
+setnames(rentals, c("fecha","hora","userid","flow","country","source","ref","url","iata","ci","co","gb"))
+
+rentals$fecha <- as.Date(strptime(rentals$fecha, "%Y-%m-%d"))
+rentals$iata <- toupper(rentals$iata)
+rentals$country <- toupper(rentals$country)
+rentals$flow <- tolower(rentals$flow)
+rentals <- subset(rentals, flow =="detail" | flow =="search" | flow =="checkout" | flow =="thanks")
+
+# AAAAH el formato fecha de ci y co viene de dos formas diferentes dependiendo del flow (:/)
+rentals$ci <- as.Date(ifelse(rentals$flow=="detail" | rentals$flow=="thanks" | rentals$flow=="checkout",
+                             as.Date(strptime(rentals$ci, "%d/%m/%Y")), as.Date(strptime(rentals$ci, "%Y-%m-%d"))))
+
+rentals$co <- as.Date(ifelse(rentals$flow=="detail" | rentals$flow=="thanks" | rentals$flow=="checkout",
+                             as.Date(strptime(rentals$co, "%d/%m/%Y")), as.Date(strptime(rentals$co, "%Y-%m-%d"))))
+
+# variables character
+rentals[,c("userid","flow","country","source","ref","url","iata","gb")] <- data.frame(lapply(rentals[,c("userid","flow","country","source","ref","url","iata","gb")], as.character), stringsAsFactors=FALSE)
+
+# GB. tiene una mezcla de puntos y comas como separador de miles. las vuelo y paso a numeric
+rentals$gb <- gsub("\\.|,)", "", rentals$gb)
+
+rentals$gb <- as.numeric(as.character(rentals$gb))
+
+# nchar(data[1:10,]$userid) da 36
+rentals <- subset(rentals, nchar(userid) == 36)
+
+# numero de huespedes
+rentals$guests <- ifelse(regexpr ("guests_quantity=", rentals$url)==-1, NA, substr(rentals$url, start=(regexpr ("guests_quantity=", rentals$url)+16), stop=(regexpr ("guests_quantity=", rentals$url)+17)))
+rentals$guests <- tolower(rentals$guests)
+
+# saco lo que solo tiene letras
+rentals$guests <- ifelse(grepl("^[a-zA-Z]+$",rentals$guests)==T, NA, rentals$guests)
+
+# saco lo que no empieza con un numero. El primer numero no puede ser 0
+rentals$guests <- ifelse(grepl("^[1-9]+",rentals$guests)==F, NA, rentals$guests)
+
+# borro los simbolos finales &,},?,-,%,)
+rentals$guests <- gsub("&|}|\\?|-|%|)", "", rentals$guests)
+
+# borro las letras finales
+rentals$guests <- gsub("*[a-zA-Z]+$", "", rentals$guests)
+
+# duracion 
+rentals$duracion <- round(as.numeric(rentals$co - rentals$ci), digits=0)
+
+# anticipacion
+rentals$anticipacion <- round(as.numeric(rentals$ci - as.Date(rentals$fecha)), digits=0)
+
+### Agregamos GEO data ####
+#source("tabulate json Hernan.R")
+
+# tablita con id de destino, IATA
+city.json <- fromJSON(file="http://10.2.7.6/geo-services-web/service/webcontext/city/simplified/allCities")$data
+city.unlist <- unlist(city.json)
+
+city.colnames <- c("oid","iataCode","description.ES","countryOid","latitude","longitude")
+city.columns <- c("oid","iataCode","description.ES","countryOid","^latitude$","^longitude$")
+city.dt <- data.frame(tabulateJSON(city.unlist,"oid", city.columns, city.colnames))
+city.dt[,c("oid","iataCode")] <- apply(city.dt[,c("oid","iataCode")], 2, function(x) as.character(x))
+
+rm(city.colnames, city.columns, city.json, city.unlist)
+
+# tablita con paises
+country.json <- fromJSON(getURL("http://10.2.7.6/geo-services-web/service/webcontext/country/simplified/allCountries"))
+country.unlist <- unlist(country.json$data)
+country.unlist <- unlist(country.json$data)
+country.colnames <- c("oid","iataCode","description.ES")
+country.columns <- c("oid","iataCode","description.ES")
+country.dt <- data.frame(tabulateJSON(country.unlist,"oid", country.columns, country.colnames))
+country.dt[,c("oid","iataCode")] <- apply(country.dt[,c("oid","iataCode")], 2, function(x) as.character(x))
+
+rm(country.colnames, country.columns, country.json, country.unlist)
+
+# merge de city y country
+city.dt <- merge(city.dt, country.dt, by.x="countryOid", by.y="oid", all.x=T)
+setnames(city.dt, c("countryOid","oid","iata","description.city","latitude","longitude","country.destino","description.country"))
+city.dt <- city.dt[,c("iata","country.destino")]
+rm(country.dt)
+
+
+#### DESTINOS MAS BUSCADOS ####
+# ahora me quedo con una busqueda de cada persona para cada destino
+rentals.uni <- subset(rentals, flow =="search")
+rentals.uni <- rentals.uni[!duplicated(rentals.uni[,c("userid","iata")]),]
+
+
+
+# Origen AR#
+destinos.AR <- as.data.frame(table(subset(rentals.uni, country=="AR")$iata))
+setnames(destinos.AR, c("iata","freq"))
+# pongo pais de destino a cada iata
+destinos.AR <- merge(destinos.AR, city.dt, by="iata", all.x=T)
+destinos.AR <- destinos.AR[order(destinos.AR$freq, decreasing = TRUE ),]
+
+write.csv(destinos.AR, file="destinosAR.csv")
+
+#Origen BR#
+destinos.BR <- as.data.frame(table(subset(rentals.uni, country=="MX")$iata))
+setnames(destinos.BR, c("iata","freq"))
+# pongo pais de destino a cada iata
+destinos.BR <- merge(destinos.BR, city.dt, by="iata", all.x=T)
+destinos.BR <- destinos.BR[order(destinos.BR$freq, decreasing = TRUE ),]
+
+write.csv(destinos.BR, file="destinosBR.csv")
+
+#Origen MX#
+destinos.MX <- as.data.frame(table(subset(rentals.uni, country=="MX")$iata))
+setnames(destinos.MX, c("iata","freq"))
+# pongo pais de destino a cada iata
+destinos.MX <- merge(destinos.MX, city.dt, by="iata", all.x=T)
+destinos.MX <- destinos.MX[order(destinos.MX$freq, decreasing = TRUE ),]
+
+write.csv(destinos.MX, file="destinosMX.csv")
+
+
+# como el flow search no tiene la cantidad de guests, me fijo si el usuario avanzo a detail y lo saco de ahi
+
+#### AR: Anticipacion y Duracion en quintiles ####
+## ordeno a los usuarios por anticipacion y los separo en 5 grupos. saco la anticipacion promedio de cada grupo
+FLN.AR <- subset(rentals.uni, country=="AR" & iata=="FLN")[with(subset(rentals.uni, country=="AR" & iata=="FLN"), order(anticipacion)),]
+n<-dim(FLN.AR)[1]
+
+anticipacion.FLN.AR<- c(mean(FLN.AR[1:(n*0.2), ]$anticipacion), mean(FLN.AR[(n*0.21):(n*0.4), ]$anticipacion), 
+                    mean(FLN.AR[(n*0.41):(n*0.6), ]$anticipacion),mean(FLN.AR[(n*0.61):(n*0.8), ]$anticipacion), 
+                    mean(FLN.AR[(n*0.81):n, ]$anticipacion), mean(FLN.AR$anticipacion), median(FLN.AR$anticipacion))
+
+FLN.AR <- subset(rentals.uni, country=="AR" & iata=="FLN")[with(subset(rentals.uni, country=="AR" & iata=="FLN"), order(duracion)),]
+
+duracion.FLN.AR<- c(mean(FLN.AR[1:(n*0.2), ]$duracion), mean(FLN.AR[(n*0.21):(n*0.4), ]$duracion), 
+                        mean(FLN.AR[(n*0.41):(n*0.6), ]$duracion),mean(FLN.AR[(n*0.61):(n*0.8), ]$duracion), 
+                        mean(FLN.AR[(n*0.81):n, ]$duracion), mean(FLN.AR$duracion), median(FLN.AR$duracion))
+
+MDQ.AR <- subset(rentals.uni, country=="AR" & iata=="MDQ")[with(subset(rentals.uni, country=="AR" & iata=="MDQ"), order(anticipacion)),]
+n<-dim(MDQ.AR)[1]
+
+anticipacion.MDQ.AR<- c(mean(MDQ.AR[1:(n*0.2), ]$anticipacion), mean(MDQ.AR[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(MDQ.AR[(n*0.41):(n*0.6), ]$anticipacion),mean(MDQ.AR[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(MDQ.AR[(n*0.81):n, ]$anticipacion), mean(MDQ.AR$anticipacion), median(MDQ.AR$anticipacion))
+
+MDQ.AR <- subset(rentals.uni, country=="AR" & iata=="MDQ")[with(subset(rentals.uni, country=="AR" & iata=="MDQ"), order(duracion)),]
+
+duracion.MDQ.AR<- c(mean(MDQ.AR[1:(n*0.2), ]$duracion), mean(MDQ.AR[(n*0.21):(n*0.4), ]$duracion), 
+                        mean(MDQ.AR[(n*0.41):(n*0.6), ]$duracion),mean(MDQ.AR[(n*0.61):(n*0.8), ]$duracion), 
+                        mean(MDQ.AR[(n*0.81):n, ]$duracion), mean(FLN.AR$duracion), median(FLN.AR$duracion))
+
+BS1.AR <- subset(rentals.uni, country=="AR" & iata=="BS1")[with(subset(rentals.uni, country=="AR" & iata=="BS1"), order(anticipacion)),]
+n<-dim(BS1.AR)[1]
+
+anticipacion.BS1.AR<- c(mean(BS1.AR[1:(n*0.2), ]$anticipacion), mean(BS1.AR[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(BS1.AR[(n*0.41):(n*0.6), ]$anticipacion),mean(BS1.AR[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(BS1.AR[(n*0.81):n, ]$anticipacion), mean(BS1.AR$anticipacion), median(BS1.AR$anticipacion))
+
+BS1.AR <- subset(rentals.uni, country=="AR" & iata=="BS1")[with(subset(rentals.uni, country=="AR" & iata=="BS1"), order(duracion)),]
+
+duracion.BS1.AR<- c(mean(BS1.AR[1:(n*0.2), ]$duracion), mean(BS1.AR[(n*0.21):(n*0.4), ]$duracion), 
+                        mean(BS1.AR[(n*0.41):(n*0.6), ]$duracion),mean(BS1.AR[(n*0.61):(n*0.8), ]$duracion), 
+                        mean(BS1.AR[(n*0.81):n, ]$duracion), mean(BS1.AR$duracion), median(BS1.AR$duracion))
+
+VLG.AR <- subset(rentals.uni, country=="AR" & iata=="VLG")[with(subset(rentals.uni, country=="AR" & iata=="VLG"), order(anticipacion)),]
+n<-dim(VLG.AR)[1]
+
+anticipacion.VLG.AR<- c(mean(VLG.AR[1:(n*0.2), ]$anticipacion), mean(VLG.AR[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(VLG.AR[(n*0.41):(n*0.6), ]$anticipacion),mean(VLG.AR[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(VLG.AR[(n*0.81):n, ]$anticipacion), mean(VLG.AR$anticipacion), median(VLG.AR$anticipacion))
+
+VLG.AR <- subset(rentals.uni, country=="AR" & iata=="VLG")[with(subset(rentals.uni, country=="AR" & iata=="VLG"), order(duracion)),]
+
+duracion.VLG.AR<- c(mean(VLG.AR[1:(n*0.2), ]$duracion), mean(VLG.AR[(n*0.21):(n*0.4), ]$duracion), 
+                        mean(VLG.AR[(n*0.41):(n*0.6), ]$duracion),mean(VLG.AR[(n*0.61):(n*0.8), ]$duracion), 
+                        mean(VLG.AR[(n*0.81):n, ]$duracion), mean(VLG.AR$duracion), median(VLG.AR$duracion))
+
+VC1.AR <- subset(rentals.uni, country=="AR" & iata=="VC1")[with(subset(rentals.uni, country=="AR" & iata=="VC1"), order(anticipacion)),]
+n<-dim(VC1.AR)[1]
+
+anticipacion.VC1.AR<- c(mean(VC1.AR[1:(n*0.2), ]$anticipacion), mean(VC1.AR[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(VC1.AR[(n*0.41):(n*0.6), ]$anticipacion),mean(VC1.AR[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(VC1.AR[(n*0.81):n, ]$anticipacion), mean(VC1.AR$anticipacion), median(VC1.AR$anticipacion))
+
+VC1.AR <- subset(rentals.uni, country=="AR" & iata=="VC1")[with(subset(rentals.uni, country=="AR" & iata=="VC1"), order(duracion)),]
+
+duracion.VC1.AR<- c(mean(VC1.AR[1:(n*0.2), ]$duracion), mean(VC1.AR[(n*0.21):(n*0.4), ]$duracion), 
+                        mean(VC1.AR[(n*0.41):(n*0.6), ]$duracion),mean(VC1.AR[(n*0.61):(n*0.8), ]$duracion), 
+                        mean(VC1.AR[(n*0.81):n, ]$duracion), mean(VC1.AR$duracion), median(VC1.AR$duracion))
+
+PI1.AR <- subset(rentals.uni, country=="AR" & iata=="PI1")[with(subset(rentals.uni, country=="AR" & iata=="PI1"), order(anticipacion)),]
+n<-dim(PI1.AR)[1]
+
+anticipacion.PI1.AR<- c(mean(PI1.AR[1:(n*0.2), ]$anticipacion), mean(PI1.AR[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(PI1.AR[(n*0.41):(n*0.6), ]$anticipacion),mean(PI1.AR[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(PI1.AR[(n*0.81):n, ]$anticipacion), mean(PI1.AR$anticipacion), median(PI1.AR$anticipacion))
+
+PI1.AR <- subset(rentals.uni, country=="AR" & iata=="PI1")[with(subset(rentals.uni, country=="AR" & iata=="PI1"), order(duracion)),]
+
+duracion.PI1.AR<- c(mean(PI1.AR[1:(n*0.2), ]$duracion), mean(PI1.AR[(n*0.21):(n*0.4), ]$duracion), 
+                        mean(PI1.AR[(n*0.41):(n*0.6), ]$duracion),mean(PI1.AR[(n*0.61):(n*0.8), ]$duracion), 
+                        mean(PI1.AR[(n*0.81):n, ]$duracion), mean(PI1.AR$duracion), median(PI1.AR$duracion))
+
+MIABC.AR <- subset(rentals.uni, country=="AR" & iata=="MIABC")[with(subset(rentals.uni, country=="AR" & iata=="MIABC"), order(anticipacion)),]
+n<-dim(MIABC.AR)[1]
+
+anticipacion.MIABC.AR<- c(mean(MIABC.AR[1:(n*0.2), ]$anticipacion), mean(MIABC.AR[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(MIABC.AR[(n*0.41):(n*0.6), ]$anticipacion),mean(MIABC.AR[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(MIABC.AR[(n*0.81):n, ]$anticipacion), mean(MIABC.AR$anticipacion), median(MIABC.AR$anticipacion))
+
+MIABC.AR <- subset(rentals.uni, country=="AR" & iata=="MIABC")[with(subset(rentals.uni, country=="AR" & iata=="MIABC"), order(duracion)),]
+
+duracion.MIABC.AR<- c(mean(MIABC.AR[1:(n*0.2), ]$duracion), mean(MIABC.AR[(n*0.21):(n*0.4), ]$duracion), 
+                          mean(MIABC.AR[(n*0.41):(n*0.6), ]$duracion),mean(MIABC.AR[(n*0.61):(n*0.8), ]$duracion), 
+                          mean(MIABC.AR[(n*0.81):n, ]$duracion), mean(MIABC.AR$duracion), median(MIABC.AR$duracion))
+
+RIO.AR <- subset(rentals.uni, country=="AR" & iata=="RIO")[with(subset(rentals.uni, country=="AR" & iata=="RIO"), order(anticipacion)),]
+n<-dim(RIO.AR)[1]
+
+anticipacion.RIO.AR<- c(mean(RIO.AR[1:(n*0.2), ]$anticipacion), mean(RIO.AR[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(RIO.AR[(n*0.41):(n*0.6), ]$anticipacion),mean(RIO.AR[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(RIO.AR[(n*0.81):n, ]$anticipacion), mean(RIO.AR$anticipacion), median(RIO.AR$anticipacion))
+
+RIO.AR <- subset(rentals.uni, country=="AR" & iata=="RIO")[with(subset(rentals.uni, country=="AR" & iata=="RIO"), order(duracion)),]
+
+duracion.RIO.AR<- c(mean(RIO.AR[1:(n*0.2), ]$duracion), mean(RIO.AR[(n*0.21):(n*0.4), ]$duracion), 
+                        mean(RIO.AR[(n*0.41):(n*0.6), ]$duracion),mean(RIO.AR[(n*0.61):(n*0.8), ]$duracion), 
+                        mean(RIO.AR[(n*0.81):n, ]$duracion), mean(RIO.AR$duracion), median(RIO.AR$duracion))
+
+KNA.AR <- subset(rentals.uni, country=="AR" & iata=="KNA")[with(subset(rentals.uni, country=="AR" & iata=="KNA"), order(anticipacion)),]
+n<-dim(KNA.AR)[1]
+
+anticipacion.KNA.AR<- c(mean(KNA.AR[1:(n*0.2), ]$anticipacion), mean(KNA.AR[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(KNA.AR[(n*0.41):(n*0.6), ]$anticipacion),mean(KNA.AR[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(KNA.AR[(n*0.81):n, ]$anticipacion), mean(KNA.AR$anticipacion), median(KNA.AR$anticipacion))
+
+KNA.AR <- subset(rentals.uni, country=="AR" & iata=="KNA")[with(subset(rentals.uni, country=="AR" & iata=="KNA"), order(duracion)),]
+
+duracion.KNA.AR<- c(mean(KNA.AR[1:(n*0.2), ]$duracion), mean(KNA.AR[(n*0.21):(n*0.4), ]$duracion), 
+                        mean(KNA.AR[(n*0.41):(n*0.6), ]$duracion),mean(KNA.AR[(n*0.61):(n*0.8), ]$duracion), 
+                        mean(KNA.AR[(n*0.81):n, ]$duracion), mean(KNA.AR$duracion), median(KNA.AR$duracion))
+
+BRC.AR <- subset(rentals.uni, country=="AR" & iata=="BRC")[with(subset(rentals.uni, country=="AR" & iata=="BRC"), order(anticipacion)),]
+n<-dim(BRC.AR)[1]
+
+anticipacion.BRC.AR<- c(mean(BRC.AR[1:(n*0.2), ]$anticipacion), mean(BRC.AR[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(BRC.AR[(n*0.41):(n*0.6), ]$anticipacion),mean(BRC.AR[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(BRC.AR[(n*0.81):n, ]$anticipacion), mean(BRC.AR$anticipacion), median(BRC.AR$anticipacion))
+
+BRC.AR <- subset(rentals.uni, country=="AR" & iata=="BRC")[with(subset(rentals.uni, country=="AR" & iata=="BRC"), order(duracion)),]
+
+duracion.BRC.AR<- c(mean(BRC.AR[1:(n*0.2), ]$duracion), mean(BRC.AR[(n*0.21):(n*0.4), ]$duracion), 
+                        mean(BRC.AR[(n*0.41):(n*0.6), ]$duracion),mean(BRC.AR[(n*0.61):(n*0.8), ]$duracion), 
+                        mean(BRC.AR[(n*0.81):n, ]$duracion), mean(BRC.AR$duracion), median(BRC.AR$duracion))
+
+rm(FLN.AR, MDQ.AR, BS1.AR,VLG.AR,VC1.AR, PI1.AR,MIABC.AR,RIO.AR,KNA.AR,BRC.AR,n)
+
+anticipacion.AR <- as.data.frame(rbind(anticipacion.FLN.AR, anticipacion.MDQ.AR, anticipacion.BS1.AR,anticipacion.VLG.AR,anticipacion.VC1.AR,
+                    anticipacion.PI1.AR,anticipacion.MIABC.AR,anticipacion.RIO.AR,anticipacion.KNA.AR,anticipacion.BRC.AR))
+
+rm(anticipacion.FLN.AR, anticipacion.MDQ.AR, anticipacion.BS1.AR,anticipacion.VLG.AR,anticipacion.VC1.AR,
+   anticipacion.PI1.AR,anticipacion.MIABC.AR,anticipacion.RIO.AR,anticipacion.KNA.AR,anticipacion.BRC.AR)
+
+anticipacion.AR$origen <- "AR"
+anticipacion.AR$destino <- c("FLN", "MDQ", "BS1", "VLG", "VC1", "PI1", "MIABC", "RIO", "KNA", "BRC")
+setnames(anticipacion.AR, c("q1", "q2", "q3", "q4", "q5", "promedio", "mediana", "origen", "destino"))
+
+duracion.AR <- as.data.frame(rbind(duracion.FLN.AR, duracion.MDQ.AR, duracion.BS1.AR,duracion.VLG.AR,duracion.VC1.AR,
+                                  duracion.PI1.AR,duracion.MIABC.AR,duracion.RIO.AR,duracion.KNA.AR,duracion.BRC.AR))
+
+rm(duracion.FLN.AR, duracion.MDQ.AR, duracion.BS1.AR,duracion.VLG.AR,duracion.VC1.AR,
+ duracion.PI1.AR,duracion.MIABC.AR,duracion.RIO.AR,duracion.KNA.AR,duracion.BRC.AR)
+
+duracion.AR$origen <- "AR"
+duracion.AR$destino <- c("FLN", "MDQ", "BS1", "VLG", "VC1", "PI1", "MIABC", "RIO", "KNA", "BRC")
+setnames(duracion.AR, c("q1", "q2", "q3", "q4", "q5", "promedio", "mediana", "origen", "destino"))
+
+#### BR: Anticipacion y Duracion en quintiles ####
+## ordeno a los usuarios por anticipacion y los separo en 5 grupos. saco la anticipacion promedio de cada grupo
+RIO.BR <- subset(rentals.uni, country=="BR" & iata=="RIO")[with(subset(rentals.uni, country=="BR" & iata=="RIO"), order(anticipacion)),]
+n<-dim(RIO.BR)[1]
+
+anticipacion.RIO.BR<- c(mean(RIO.BR[1:(n*0.2), ]$anticipacion), mean(RIO.BR[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(RIO.BR[(n*0.41):(n*0.6), ]$anticipacion),mean(RIO.BR[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(RIO.BR[(n*0.81):n, ]$anticipacion), mean(RIO.BR$anticipacion), median(RIO.BR$anticipacion))
+
+RIO.BR <- subset(rentals.uni, country=="BR" & iata=="RIO")[with(subset(rentals.uni, country=="BR" & iata=="RIO"), order(duracion)),]
+
+duracion.RIO.BR<- c(mean(RIO.BR[1:(n*0.2), ]$duracion), mean(RIO.BR[(n*0.21):(n*0.4), ]$duracion), 
+                    mean(RIO.BR[(n*0.41):(n*0.6), ]$duracion),mean(RIO.BR[(n*0.61):(n*0.8), ]$duracion), 
+                    mean(RIO.BR[(n*0.81):n, ]$duracion), mean(RIO.BR$duracion), median(RIO.BR$duracion))
+
+FLN.BR <- subset(rentals.uni, country=="BR" & iata=="FLN")[with(subset(rentals.uni, country=="BR" & iata=="FLN"), order(anticipacion)),]
+n<-dim(FLN.BR)[1]
+
+anticipacion.FLN.BR<- c(mean(FLN.BR[1:(n*0.2), ]$anticipacion), mean(FLN.BR[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(FLN.BR[(n*0.41):(n*0.6), ]$anticipacion),mean(FLN.BR[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(FLN.BR[(n*0.81):n, ]$anticipacion), mean(FLN.BR$anticipacion), median(FLN.BR$anticipacion))
+
+FLN.BR <- subset(rentals.uni, country=="BR" & iata=="FLN")[with(subset(rentals.uni, country=="BR" & iata=="FLN"), order(duracion)),]
+
+duracion.FLN.BR<- c(mean(FLN.BR[1:(n*0.2), ]$duracion), mean(FLN.BR[(n*0.21):(n*0.4), ]$duracion), 
+                    mean(FLN.BR[(n*0.41):(n*0.6), ]$duracion),mean(FLN.BR[(n*0.61):(n*0.8), ]$duracion), 
+                    mean(FLN.BR[(n*0.81):n, ]$duracion), mean(FLN.BR$duracion), median(FLN.BR$duracion))
+
+ORL.BR <- subset(rentals.uni, country=="BR" & iata=="ORL")[with(subset(rentals.uni, country=="BR" & iata=="ORL"), order(anticipacion)),]
+n<-dim(ORL.BR)[1]
+
+anticipacion.ORL.BR<- c(mean(ORL.BR[1:(n*0.2), ]$anticipacion), mean(ORL.BR[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(ORL.BR[(n*0.41):(n*0.6), ]$anticipacion),mean(ORL.BR[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(ORL.BR[(n*0.81):n, ]$anticipacion), mean(ORL.BR$anticipacion), median(ORL.BR$anticipacion))
+
+ORL.BR <- subset(rentals.uni, country=="BR" & iata=="ORL")[with(subset(rentals.uni, country=="BR" & iata=="ORL"), order(duracion)),]
+
+duracion.ORL.BR<- c(mean(ORL.BR[1:(n*0.2), ]$duracion), mean(ORL.BR[(n*0.21):(n*0.4), ]$duracion), 
+                    mean(ORL.BR[(n*0.41):(n*0.6), ]$duracion),mean(ORL.BR[(n*0.61):(n*0.8), ]$duracion), 
+                    mean(ORL.BR[(n*0.81):n, ]$duracion), mean(ORL.BR$duracion), median(ORL.BR$duracion))
+
+UBT.BR <- subset(rentals.uni, country=="BR" & iata=="UBT")[with(subset(rentals.uni, country=="BR" & iata=="UBT"), order(anticipacion)),]
+n<-dim(UBT.BR)[1]
+
+anticipacion.UBT.BR<- c(mean(UBT.BR[1:(n*0.2), ]$anticipacion), mean(UBT.BR[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(UBT.BR[(n*0.41):(n*0.6), ]$anticipacion),mean(UBT.BR[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(UBT.BR[(n*0.81):n, ]$anticipacion), mean(UBT.BR$anticipacion), median(UBT.BR$anticipacion))
+
+UBT.BR <- subset(rentals.uni, country=="BR" & iata=="UBT")[with(subset(rentals.uni, country=="BR" & iata=="UBT"), order(duracion)),]
+
+duracion.UBT.BR<- c(mean(UBT.BR[1:(n*0.2), ]$duracion), mean(UBT.BR[(n*0.21):(n*0.4), ]$duracion), 
+                    mean(UBT.BR[(n*0.41):(n*0.6), ]$duracion),mean(UBT.BR[(n*0.61):(n*0.8), ]$duracion), 
+                    mean(UBT.BR[(n*0.81):n, ]$duracion), mean(UBT.BR$duracion), median(UBT.BR$duracion))
+
+GU2.BR <- subset(rentals.uni, country=="BR" & iata=="GU2")[with(subset(rentals.uni, country=="BR" & iata=="GU2"), order(anticipacion)),]
+n<-dim(GU2.BR)[1]
+
+anticipacion.GU2.BR<- c(mean(GU2.BR[1:(n*0.2), ]$anticipacion), mean(GU2.BR[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(GU2.BR[(n*0.41):(n*0.6), ]$anticipacion),mean(GU2.BR[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(GU2.BR[(n*0.81):n, ]$anticipacion), mean(GU2.BR$anticipacion), median(GU2.BR$anticipacion))
+
+GU2.BR <- subset(rentals.uni, country=="BR" & iata=="GU2")[with(subset(rentals.uni, country=="BR" & iata=="GU2"), order(duracion)),]
+
+duracion.GU2.BR<- c(mean(GU2.BR[1:(n*0.2), ]$duracion), mean(GU2.BR[(n*0.21):(n*0.4), ]$duracion), 
+                    mean(GU2.BR[(n*0.41):(n*0.6), ]$duracion),mean(GU2.BR[(n*0.61):(n*0.8), ]$duracion), 
+                    mean(GU2.BR[(n*0.81):n, ]$duracion), mean(GU2.BR$duracion), median(GU2.BR$duracion))
+
+CFB.BR <- subset(rentals.uni, country=="BR" & iata=="CFB")[with(subset(rentals.uni, country=="BR" & iata=="CFB"), order(anticipacion)),]
+n<-dim(CFB.BR)[1]
+
+anticipacion.CFB.BR<- c(mean(CFB.BR[1:(n*0.2), ]$anticipacion), mean(CFB.BR[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(CFB.BR[(n*0.41):(n*0.6), ]$anticipacion),mean(CFB.BR[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(CFB.BR[(n*0.81):n, ]$anticipacion), mean(CFB.BR$anticipacion), median(CFB.BR$anticipacion))
+
+CFB.BR <- subset(rentals.uni, country=="BR" & iata=="CFB")[with(subset(rentals.uni, country=="BR" & iata=="CFB"), order(duracion)),]
+
+duracion.CFB.BR<- c(mean(CFB.BR[1:(n*0.2), ]$duracion), mean(CFB.BR[(n*0.21):(n*0.4), ]$duracion), 
+                    mean(CFB.BR[(n*0.41):(n*0.6), ]$duracion),mean(CFB.BR[(n*0.61):(n*0.8), ]$duracion), 
+                    mean(CFB.BR[(n*0.81):n, ]$duracion), mean(CFB.BR$duracion), median(CFB.BR$duracion))
+
+BZC.BR <- subset(rentals.uni, country=="BR" & iata=="BZC")[with(subset(rentals.uni, country=="BR" & iata=="BZC"), order(anticipacion)),]
+n<-dim(BZC.BR)[1]
+
+anticipacion.BZC.BR<- c(mean(BZC.BR[1:(n*0.2), ]$anticipacion), mean(BZC.BR[(n*0.21):(n*0.4), ]$anticipacion), 
+                          mean(BZC.BR[(n*0.41):(n*0.6), ]$anticipacion),mean(BZC.BR[(n*0.61):(n*0.8), ]$anticipacion), 
+                          mean(BZC.BR[(n*0.81):n, ]$anticipacion), mean(BZC.BR$anticipacion), median(BZC.BR$anticipacion))
+
+BZC.BR <- subset(rentals.uni, country=="BR" & iata=="BZC")[with(subset(rentals.uni, country=="BR" & iata=="BZC"), order(duracion)),]
+
+duracion.BZC.BR<- c(mean(BZC.BR[1:(n*0.2), ]$duracion), mean(BZC.BR[(n*0.21):(n*0.4), ]$duracion), 
+                      mean(BZC.BR[(n*0.41):(n*0.6), ]$duracion),mean(BZC.BR[(n*0.61):(n*0.8), ]$duracion), 
+                      mean(BZC.BR[(n*0.81):n, ]$duracion), mean(BZC.BR$duracion), median(BZC.BR$duracion))
+
+IB1.BR <- subset(rentals.uni, country=="BR" & iata=="IB1")[with(subset(rentals.uni, country=="BR" & iata=="IB1"), order(anticipacion)),]
+n<-dim(IB1.BR)[1]
+
+anticipacion.IB1.BR<- c(mean(IB1.BR[1:(n*0.2), ]$anticipacion), mean(IB1.BR[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(IB1.BR[(n*0.41):(n*0.6), ]$anticipacion),mean(IB1.BR[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(IB1.BR[(n*0.81):n, ]$anticipacion), mean(IB1.BR$anticipacion), median(IB1.BR$anticipacion))
+
+IB1.BR <- subset(rentals.uni, country=="BR" & iata=="IB1")[with(subset(rentals.uni, country=="BR" & iata=="IB1"), order(duracion)),]
+
+duracion.IB1.BR<- c(mean(IB1.BR[1:(n*0.2), ]$duracion), mean(IB1.BR[(n*0.21):(n*0.4), ]$duracion), 
+                    mean(IB1.BR[(n*0.41):(n*0.6), ]$duracion),mean(IB1.BR[(n*0.61):(n*0.8), ]$duracion), 
+                    mean(IB1.BR[(n*0.81):n, ]$duracion), mean(IB1.BR$duracion), median(IB1.BR$duracion))
+
+FOR.BR <- subset(rentals.uni, country=="BR" & iata=="FOR")[with(subset(rentals.uni, country=="BR" & iata=="FOR"), order(anticipacion)),]
+n<-dim(FOR.BR)[1]
+
+anticipacion.FOR.BR<- c(mean(FOR.BR[1:(n*0.2), ]$anticipacion), mean(FOR.BR[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(FOR.BR[(n*0.41):(n*0.6), ]$anticipacion),mean(FOR.BR[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(FOR.BR[(n*0.81):n, ]$anticipacion), mean(FOR.BR$anticipacion), median(FOR.BR$anticipacion))
+
+FOR.BR <- subset(rentals.uni, country=="BR" & iata=="FOR")[with(subset(rentals.uni, country=="BR" & iata=="FOR"), order(duracion)),]
+
+duracion.FOR.BR<- c(mean(FOR.BR[1:(n*0.2), ]$duracion), mean(FOR.BR[(n*0.21):(n*0.4), ]$duracion), 
+                    mean(FOR.BR[(n*0.41):(n*0.6), ]$duracion),mean(FOR.BR[(n*0.61):(n*0.8), ]$duracion), 
+                    mean(FOR.BR[(n*0.81):n, ]$duracion), mean(FOR.BR$duracion), median(FOR.BR$duracion))
+
+BBCAM.BR <- subset(rentals.uni, country=="BR" & iata=="BBCAM")[with(subset(rentals.uni, country=="BR" & iata=="BBCAM"), order(anticipacion)),]
+n<-dim(BBCAM.BR)[1]
+
+anticipacion.BBCAM.BR<- c(mean(BBCAM.BR[1:(n*0.2), ]$anticipacion), mean(BBCAM.BR[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(BBCAM.BR[(n*0.41):(n*0.6), ]$anticipacion),mean(BBCAM.BR[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(BBCAM.BR[(n*0.81):n, ]$anticipacion), mean(BBCAM.BR$anticipacion), median(BBCAM.BR$anticipacion))
+
+BBCAM.BR <- subset(rentals.uni, country=="BR" & iata=="BBCAM")[with(subset(rentals.uni, country=="BR" & iata=="BBCAM"), order(duracion)),]
+
+duracion.BBCAM.BR<- c(mean(BBCAM.BR[1:(n*0.2), ]$duracion), mean(BBCAM.BR[(n*0.21):(n*0.4), ]$duracion), 
+                    mean(BBCAM.BR[(n*0.41):(n*0.6), ]$duracion),mean(BBCAM.BR[(n*0.61):(n*0.8), ]$duracion), 
+                    mean(BBCAM.BR[(n*0.81):n, ]$duracion), mean(BBCAM.BR$duracion), median(BBCAM.BR$duracion))
+
+rm(RIO.BR, FLN.BR, ORL.BR,UBT.BR,GU2.BR, CFB.BR,BZC.BR,IB1.BR,FOR.BR,BBCAM.BR,n)
+
+anticipacion.BR <- as.data.frame(rbind(anticipacion.RIO.BR, anticipacion.FLN.BR, anticipacion.ORL.BR,anticipacion.UBT.BR,anticipacion.GU2.BR,
+                                       anticipacion.CFB.BR,anticipacion.BZC.BR,anticipacion.IB1.BR,anticipacion.FOR.BR,anticipacion.BBCAM.BR))
+
+rm(anticipacion.RIO.BR, anticipacion.FLN.BR, anticipacion.ORL.BR,anticipacion.UBT.BR,anticipacion.GU2.BR,
+   anticipacion.CFB.BR,anticipacion.BZC.BR,anticipacion.IB1.BR,anticipacion.FOR.BR,anticipacion.BBCAM.BR)
+
+anticipacion.BR$origen <- "BR"
+anticipacion.BR$destino <- c("RIO", "FLN", "ORL", "UBT", "GU2", "CFB", "BZC", "IB1", "FOR", "BBCAM")
+setnames(anticipacion.BR, c("q1", "q2", "q3", "q4", "q5", "promedio", "mediana", "origen", "destino"))
+
+duracion.BR <- as.data.frame(rbind(duracion.RIO.BR, duracion.FLN.BR, duracion.ORL.BR,duracion.UBT.BR,duracion.GU2.BR,
+                                   duracion.CFB.BR,duracion.BZC.BR,duracion.IB1.BR,duracion.FOR.BR,duracion.BBCAM.BR))
+
+rm(duracion.RIO.BR, duracion.FLN.BR, duracion.ORL.BR,duracion.UBT.BR,duracion.GU2.BR,
+   duracion.CFB.BR,duracion.BZC.BR,duracion.IB1.BR,duracion.FOR.BR,duracion.BBCAM.BR)
+
+duracion.BR$origen <- "BR"
+duracion.BR$destino <- c("RIO", "FLN", "ORL", "UBT", "GU2", "CFB", "BZC", "IB1", "FOR", "BBCAM")
+setnames(duracion.BR, c("q1", "q2", "q3", "q4", "q5", "promedio", "mediana", "origen", "destino"))
+
+
+#### MX: Anticipacion y Duracion en quintiles ####
+## ordeno a los usuarios por anticipacion y los separo en 5 grupos. saco la anticipacion promedio de cada grupo
+ACA.MX <- subset(rentals.uni, country=="MX" & iata=="ACA")[with(subset(rentals.uni, country=="MX" & iata=="ACA"), order(anticipacion)),]
+n<-dim(ACA.MX)[1]
+
+anticipacion.ACA.MX<- c(mean(ACA.MX[1:(n*0.2), ]$anticipacion), mean(ACA.MX[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(ACA.MX[(n*0.41):(n*0.6), ]$anticipacion),mean(ACA.MX[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(ACA.MX[(n*0.81):n, ]$anticipacion),mean(ACA.MX$anticipacion),median(ACA.MX$anticipacion))
+
+ACA.MX <- subset(rentals.uni, country=="MX" & iata=="ACA")[with(subset(rentals.uni, country=="MX" & iata=="ACA"), order(duracion)),]
+
+duracion.ACA.MX<- c(mean(ACA.MX[1:(n*0.2), ]$duracion), mean(ACA.MX[(n*0.21):(n*0.4), ]$duracion), 
+                    mean(ACA.MX[(n*0.41):(n*0.6), ]$duracion),mean(ACA.MX[(n*0.61):(n*0.8), ]$duracion), 
+                    mean(ACA.MX[(n*0.81):n, ]$duracion),mean(ACA.MX$duracion), median(ACA.MX$duracion))
+
+CUN.MX <- subset(rentals.uni, country=="MX" & iata=="CUN")[with(subset(rentals.uni, country=="MX" & iata=="CUN"), order(anticipacion)),]
+n<-dim(CUN.MX)[1]
+
+anticipacion.CUN.MX<- c(mean(CUN.MX[1:(n*0.2), ]$anticipacion), mean(CUN.MX[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(CUN.MX[(n*0.41):(n*0.6), ]$anticipacion),mean(CUN.MX[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(CUN.MX[(n*0.81):n, ]$anticipacion),mean(CUN.MX$anticipacion),median(CUN.MX$anticipacion))
+
+CUN.MX <- subset(rentals.uni, country=="MX" & iata=="CUN")[with(subset(rentals.uni, country=="MX" & iata=="CUN"), order(duracion)),]
+
+duracion.CUN.MX<- c(mean(CUN.MX[1:(n*0.2), ]$duracion), mean(CUN.MX[(n*0.21):(n*0.4), ]$duracion), 
+                    mean(CUN.MX[(n*0.41):(n*0.6), ]$duracion),mean(CUN.MX[(n*0.61):(n*0.8), ]$duracion), 
+                    mean(CUN.MX[(n*0.81):n, ]$duracion),mean(CUN.MX$duracion), median(CUN.MX$duracion))
+
+PCM.MX <- subset(rentals.uni, country=="MX" & iata=="PCM")[with(subset(rentals.uni, country=="MX" & iata=="PCM"), order(anticipacion)),]
+n<-dim(PCM.MX)[1]
+
+anticipacion.PCM.MX<- c(mean(PCM.MX[1:(n*0.2), ]$anticipacion), mean(PCM.MX[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(PCM.MX[(n*0.41):(n*0.6), ]$anticipacion),mean(PCM.MX[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(PCM.MX[(n*0.81):n, ]$anticipacion),mean(PCM.MX$anticipacion), median(PCM.MX$anticipacion))
+
+PCM.MX <- subset(rentals.uni, country=="MX" & iata=="PCM")[with(subset(rentals.uni, country=="MX" & iata=="PCM"), order(duracion)),]
+
+duracion.PCM.MX<- c(mean(PCM.MX[1:(n*0.2), ]$duracion), mean(PCM.MX[(n*0.21):(n*0.4), ]$duracion), 
+                    mean(PCM.MX[(n*0.41):(n*0.6), ]$duracion),mean(PCM.MX[(n*0.61):(n*0.8), ]$duracion), 
+                    mean(PCM.MX[(n*0.81):n, ]$duracion), mean(PCM.MX$duracion), median(PCM.MX$duracion))
+
+PVR.MX <- subset(rentals.uni, country=="MX" & iata=="PVR")[with(subset(rentals.uni, country=="MX" & iata=="PVR"), order(anticipacion)),]
+n<-dim(PVR.MX)[1]
+
+anticipacion.PVR.MX<- c(mean(PVR.MX[1:(n*0.2), ]$anticipacion), mean(PVR.MX[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(PVR.MX[(n*0.41):(n*0.6), ]$anticipacion),mean(PVR.MX[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(PVR.MX[(n*0.81):n, ]$anticipacion), mean(PVR.MX$anticipacion), median(PVR.MX$anticipacion))
+
+PVR.MX <- subset(rentals.uni, country=="MX" & iata=="PVR")[with(subset(rentals.uni, country=="MX" & iata=="PVR"), order(duracion)),]
+
+duracion.PVR.MX<- c(mean(PVR.MX[1:(n*0.2), ]$duracion), mean(PVR.MX[(n*0.21):(n*0.4), ]$duracion), 
+                    mean(PVR.MX[(n*0.41):(n*0.6), ]$duracion),mean(PVR.MX[(n*0.61):(n*0.8), ]$duracion), 
+                    mean(PVR.MX[(n*0.81):n, ]$duracion),mean(PVR.MX$duracion), median(PVR.MX$duracion))
+
+MEX.MX <- subset(rentals.uni, country=="MX" & iata=="MEX")[with(subset(rentals.uni, country=="MX" & iata=="MEX"), order(anticipacion)),]
+n<-dim(MEX.MX)[1]
+
+anticipacion.MEX.MX<- c(mean(MEX.MX[1:(n*0.2), ]$anticipacion), mean(MEX.MX[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(MEX.MX[(n*0.41):(n*0.6), ]$anticipacion),mean(MEX.MX[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(MEX.MX[(n*0.81):n, ]$anticipacion),  mean(MEX.MX$anticipacion), median(MEX.MX$anticipacion))
+
+MEX.MX <- subset(rentals.uni, country=="MX" & iata=="MEX")[with(subset(rentals.uni, country=="MX" & iata=="MEX"), order(duracion)),]
+
+duracion.MEX.MX<- c(mean(MEX.MX[1:(n*0.2), ]$duracion), mean(MEX.MX[(n*0.21):(n*0.4), ]$duracion), 
+                    mean(MEX.MX[(n*0.41):(n*0.6), ]$duracion),mean(MEX.MX[(n*0.61):(n*0.8), ]$duracion), 
+                    mean(MEX.MX[(n*0.81):n, ]$duracion), mean(MEX.MX$duracion), median(MEX.MX$duracion))
+
+MZT.MX <- subset(rentals.uni, country=="MX" & iata=="MZT")[with(subset(rentals.uni, country=="MX" & iata=="MZT"), order(anticipacion)),]
+n<-dim(MZT.MX)[1]
+
+anticipacion.MZT.MX<- c(mean(MZT.MX[1:(n*0.2), ]$anticipacion), mean(MZT.MX[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(MZT.MX[(n*0.41):(n*0.6), ]$anticipacion),mean(MZT.MX[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(MZT.MX[(n*0.81):n, ]$anticipacion),mean(MZT.MX$anticipacion), median(MZT.MX$anticipacion))
+
+MZT.MX <- subset(rentals.uni, country=="MX" & iata=="MZT")[with(subset(rentals.uni, country=="MX" & iata=="MZT"), order(duracion)),]
+
+duracion.MZT.MX<- c(mean(MZT.MX[1:(n*0.2), ]$duracion), mean(MZT.MX[(n*0.21):(n*0.4), ]$duracion), 
+                    mean(MZT.MX[(n*0.41):(n*0.6), ]$duracion),mean(MZT.MX[(n*0.61):(n*0.8), ]$duracion), 
+                    mean(MZT.MX[(n*0.81):n, ]$duracion),mean(MZT.MX$duracion),median(MZT.MX$duracion))
+
+CVJ.MX <- subset(rentals.uni, country=="MX" & iata=="CVJ")[with(subset(rentals.uni, country=="MX" & iata=="CVJ"), order(anticipacion)),]
+n<-dim(CVJ.MX)[1]
+
+anticipacion.CVJ.MX<- c(mean(CVJ.MX[1:(n*0.2), ]$anticipacion), mean(CVJ.MX[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(CVJ.MX[(n*0.41):(n*0.6), ]$anticipacion),mean(CVJ.MX[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(CVJ.MX[(n*0.81):n, ]$anticipacion), mean(CVJ.MX$anticipacion), median(CVJ.MX$anticipacion))
+
+CVJ.MX <- subset(rentals.uni, country=="MX" & iata=="CVJ")[with(subset(rentals.uni, country=="MX" & iata=="CVJ"), order(duracion)),]
+
+duracion.CVJ.MX<- c(mean(CVJ.MX[1:(n*0.2), ]$duracion), mean(CVJ.MX[(n*0.21):(n*0.4), ]$duracion), 
+                    mean(CVJ.MX[(n*0.41):(n*0.6), ]$duracion),mean(CVJ.MX[(n*0.61):(n*0.8), ]$duracion), 
+                    mean(CVJ.MX[(n*0.81):n, ]$duracion), mean(CVJ.MX$duracion), median(CVJ.MX$duracion))
+
+HUX.MX <- subset(rentals.uni, country=="MX" & iata=="HUX")[with(subset(rentals.uni, country=="MX" & iata=="HUX"), order(anticipacion)),]
+n<-dim(HUX.MX)[1]
+
+anticipacion.HUX.MX<- c(mean(HUX.MX[1:(n*0.2), ]$anticipacion), mean(HUX.MX[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(HUX.MX[(n*0.41):(n*0.6), ]$anticipacion),mean(HUX.MX[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(HUX.MX[(n*0.81):n, ]$anticipacion),mean(HUX.MX$anticipacion),median(HUX.MX$anticipacion))
+
+HUX.MX <- subset(rentals.uni, country=="MX" & iata=="HUX")[with(subset(rentals.uni, country=="MX" & iata=="HUX"), order(duracion)),]
+
+duracion.HUX.MX<- c(mean(HUX.MX[1:(n*0.2), ]$duracion), mean(HUX.MX[(n*0.21):(n*0.4), ]$duracion), 
+                    mean(HUX.MX[(n*0.41):(n*0.6), ]$duracion),mean(HUX.MX[(n*0.61):(n*0.8), ]$duracion), 
+                    mean(HUX.MX[(n*0.81):n, ]$duracion),mean(HUX.MX$duracion),median(HUX.MX$duracion))
+
+ZIH.MX <- subset(rentals.uni, country=="MX" & iata=="ZIH")[with(subset(rentals.uni, country=="MX" & iata=="ZIH"), order(anticipacion)),]
+n<-dim(ZIH.MX)[1]
+
+anticipacion.ZIH.MX<- c(mean(ZIH.MX[1:(n*0.2), ]$anticipacion), mean(ZIH.MX[(n*0.21):(n*0.4), ]$anticipacion), 
+                        mean(ZIH.MX[(n*0.41):(n*0.6), ]$anticipacion),mean(ZIH.MX[(n*0.61):(n*0.8), ]$anticipacion), 
+                        mean(ZIH.MX[(n*0.81):n, ]$anticipacion),mean(ZIH.MX$anticipacion),median(ZIH.MX$anticipacion))
+
+ZIH.MX <- subset(rentals.uni, country=="MX" & iata=="ZIH")[with(subset(rentals.uni, country=="MX" & iata=="ZIH"), order(duracion)),]
+
+duracion.ZIH.MX<- c(mean(ZIH.MX[1:(n*0.2), ]$duracion), mean(ZIH.MX[(n*0.21):(n*0.4), ]$duracion), 
+                    mean(ZIH.MX[(n*0.41):(n*0.6), ]$duracion),mean(ZIH.MX[(n*0.61):(n*0.8), ]$duracion), 
+                    mean(ZIH.MX[(n*0.81):n, ]$duracion),mean(ZIH.MX$duracion),median(ZIH.MX$duracion))
+
+VER.MX <- subset(rentals.uni, country=="MX" & iata=="VER")[with(subset(rentals.uni, country=="MX" & iata=="VER"), order(anticipacion)),]
+n<-dim(VER.MX)[1]
+
+anticipacion.VER.MX<- c(mean(VER.MX[1:(n*0.2), ]$anticipacion), mean(VER.MX[(n*0.21):(n*0.4), ]$anticipacion), 
+                          mean(VER.MX[(n*0.41):(n*0.6), ]$anticipacion),mean(VER.MX[(n*0.61):(n*0.8), ]$anticipacion), 
+                          mean(VER.MX[(n*0.81):n, ]$anticipacion),mean(VER.MX$anticipacion),median(VER.MX$anticipacion))
+
+VER.MX <- subset(rentals.uni, country=="MX" & iata=="VER")[with(subset(rentals.uni, country=="MX" & iata=="VER"), order(duracion)),]
+
+duracion.VER.MX<- c(mean(VER.MX[1:(n*0.2), ]$duracion), mean(VER.MX[(n*0.21):(n*0.4), ]$duracion), 
+                      mean(VER.MX[(n*0.41):(n*0.6), ]$duracion),mean(VER.MX[(n*0.61):(n*0.8), ]$duracion), 
+                      mean(VER.MX[(n*0.81):n, ]$duracion), mean(VER.MX$duracion),median(VER.MX$duracion))
+
+rm(ACA.MX, CUN.MX, PCM.MX,PVR.MX,MEX.MX, MZT.MX,CVJ.MX,HUX.MX,ZIH.MX,VER.MX,n)
+
+anticipacion.MX <- as.data.frame(rbind(anticipacion.ACA.MX, anticipacion.CUN.MX, anticipacion.PCM.MX,anticipacion.PVR.MX,anticipacion.MEX.MX,
+                                       anticipacion.MZT.MX,anticipacion.CVJ.MX,anticipacion.HUX.MX,anticipacion.ZIH.MX,anticipacion.VER.MX))
+
+rm(anticipacion.ACA.MX, anticipacion.CUN.MX, anticipacion.PCM.MX,anticipacion.PVR.MX,anticipacion.MEX.MX,
+   anticipacion.MZT.MX,anticipacion.CVJ.MX,anticipacion.HUX.MX,anticipacion.ZIH.MX,anticipacion.VER.MX)
+
+anticipacion.MX$origen <- "MX"
+anticipacion.MX$destino <- c("ACA", "CUN", "PCM", "PVR", "MEX", "MZT", "CVJ", "HUX", "ZIH", "VER")
+setnames(anticipacion.MX, c("q1", "q2", "q3", "q4", "q5", "promedio", "mediana", "origen", "destino"))
+
+duracion.MX <- as.data.frame(rbind(duracion.ACA.MX, duracion.CUN.MX, duracion.PCM.MX,duracion.PVR.MX,duracion.MEX.MX,
+                                   duracion.MZT.MX,duracion.CVJ.MX,duracion.HUX.MX,duracion.ZIH.MX,duracion.VER.MX))
+
+rm(duracion.ACA.MX, duracion.CUN.MX, duracion.PCM.MX,duracion.PVR.MX,duracion.MEX.MX,
+   duracion.MZT.MX,duracion.CVJ.MX,duracion.HUX.MX,duracion.ZIH.MX,duracion.VER.MX)
+
+duracion.MX$origen <- "MX"
+duracion.MX$destino <- c("ACA", "CUN", "PCM", "PVR", "MEX", "MZT", "CVJ", "HUX", "ZIH", "VER")
+setnames(duracion.MX, c("q1", "q2", "q3", "q4", "q5", "promedio", "mediana", "origen", "destino"))
