@@ -1,0 +1,356 @@
+#Seteamos la ruta dde se van a descargar los archivitos
+setwd("/home/despegar/rstudio_data/vseminario/Compras y Fees")
+
+# Levantamos la data. 
+compras <- read.csv("/home/despegar/rstudio_data/vseminario/Compras y Fees/comprasyfeesII.csv", sep=",", header =T, stringsAsFactors=FALSE)
+
+colnames(compras) <- c("moneda","aerolinea","tarifausdfinal","adultos","ninios","infantes","cuotas","tipovuelo","duracion","idpais.destino","idpais.origen","idproducto","idciudad.origen","idciudad.destino","ci","co","feeusd","email","fechareserva","pais")
+
+# Paso la fecha a formato fecha
+compras$fechareserva <- as.character(compras$fechareserva)
+compras$fechareserva <- strptime(compras$fechareserva,format="%Y%m%d")
+
+compras$ci <- as.character(compras$ci)
+compras$ci <- strptime(compras$ci,format="%Y%m%d")
+
+compras$co <- as.character(compras$co)
+compras$co <- strptime(compras$co,format="%Y%m%d")
+
+# agrego var de porcentaje de fee
+compras$porcentajefee <- compras$feeusd / compras$tarifausdfinal 
+
+# dejo solo el producto vuelos
+compras <- subset(compras, idproducto == 18)
+compras <- subset(compras, feeusd >= 0)
+
+# domestico o internacional
+compras$domestico <- as.numeric(ifelse(compras$idpais.destino == compras$idpais.origen, 1, 0))
+
+# pais de origen
+load("/home/despegar/rstudio_data/vseminario/ids pentaho/idspaises.rda")
+ids.paises <- subset(ids.paises[,c(1,2)])
+compras <- merge(compras, ids.paises, by.x="idpais.origen", by.y="id_dim_pais", all.x=T)
+setnames(compras, "cod_pais", "pais.origen")
+rm(ids.paises)
+
+compras$idpais.origen <- NULL
+compras$pais <- NULL
+compras$idpais.destino <- NULL  
+
+# itinerario
+load("/home/despegar/rstudio_data/vseminario/ids pentaho/idsciudades.rda")
+ids.ciudades <- subset(ids.ciudades[,c(1,3)])
+compras <- merge(compras, ids.ciudades, by.x="idciudad.origen", by.y="id_dim_ciudad", all.x=T)
+setnames(compras, "cod_ciudad", "ciudad.origen") 
+compras <- merge(compras, ids.ciudades, by.x="idciudad.destino", by.y="id_dim_ciudad", all.x=T)
+setnames(compras, "cod_ciudad", "ciudad.destino") 
+rm(ids.ciudades)
+
+compras$ruta <- paste(compras$ciudad.origen,"-",compras$ciudad.destino )
+
+compras$idciudad.destino <- NULL  
+compras$idciudad.origen <- NULL
+compras$ciudad.destino <- NULL
+compras$ciudad.origen <- NULL
+
+# saco las compras de un mismo email en el mismo dia, 
+# porque quiero ver como el fee afecta compras a lo largo del tiempo
+compras <- compras[!duplicated(compras[,c("email","fechareserva")]),]
+
+# saco las obs con tarifa final menor a 1
+compras <- subset(compras, tarifausdfinal > 1)
+
+# cuento las compras de cada email
+compras$email <- as.character(compras$email) 
+cant.co <- table(compras$email)
+cant.co <-as.data.frame(cant.co)
+colnames(cant.co)<-c("email","n.compras")
+
+# hay mails con 300 compras. seran cuentas de empresas. 
+
+##me quedare con los usuarios 
+## de menos compras que acumulen el 90% de las compras. 
+## Me quedaron usuarios con max 24 vuelos comprados en dos años.
+## cant.co <- cant.co[with(cant.co, order(-n.compras)),]
+## cant.co$compras.acum <- cumsum(cant.co$n.compras) 
+## cant.co <- subset(cant.co, compras.acum > (0.10*sum(cant.co$n.compras)))
+## cant.co$compras.acum <- NULL
+
+# en vez de lo anterior, saco al 1% de personas con mas compras
+# Me quedaron usuarios con max 18 vuelos comprados en dos años.
+
+cant.co <- cant.co[with(cant.co, order(n.compras)),]
+n<-dim(cant.co)[1]
+cant.co<-cant.co[1:(n*0.99),]
+
+compras <- merge(compras, cant.co, by="email")
+rm(cant.co,n)
+
+# los que no pagan con tarjeta de credito lo hacen con debito o deposito o transferencia bancaria.
+# dire que pagan en un pago/cuota
+compras$cuotas <- ifelse(compras$cuotas == "", 1, compras$cuotas)
+compras <- subset(compras, cuotas != "Múltiples" )
+
+# cantidad de pasajeros
+compras$pasajeros <- as.numeric(compras$adultos + compras$ninios)
+
+# duracion
+compras$duracion <- round(as.numeric(compras$co - compras$ci)/ (60*60*24), digits=0) 
+
+#anticipacion
+compras$anticipacion <- round(as.numeric(compras$ci - compras$fechareserva)/ (60*60*24), digits=0)
+
+# ordeno por fecha y me quedo con una tabla de uniques y otra de duplicados. 
+# la primera tendra la primera compra, la otra tendra el resto de las compras.
+
+compras <- compras[with(compras, order(email,fechareserva)),]
+
+duplicompras1 <- duplicated(compras$email) 
+primerascompras <- subset(compras,duplicompras1!=TRUE, select = c(email,n.compras,pais.origen,aerolinea,tarifausdfinal,feeusd,porcentajefee,cuotas,tipovuelo,domestico,ruta,pasajeros,duracion,anticipacion,fechareserva)) 
+restocompras <- subset(compras,duplicompras1!=FALSE, select = c(email,tarifausdfinal,feeusd,porcentajefee,domestico,fechareserva))
+
+duplicompras2 <- duplicated(restocompras$email) 
+segundascompras <- subset(restocompras,duplicompras2!=TRUE)
+restocompras <- subset(restocompras,duplicompras2!=FALSE) 
+
+duplicompras3 <- duplicated(restocompras$email) 
+tercerascompras <- subset(restocompras,duplicompras3!=TRUE)
+restocompras <- subset(restocompras,duplicompras3!=FALSE) 
+
+duplicompras4 <- duplicated(restocompras$email) 
+cuartascompras <- subset(restocompras,duplicompras4!=TRUE)
+restocompras <- subset(restocompras,duplicompras4!=FALSE)
+
+duplicompras5 <- duplicated(restocompras$email) 
+quintascompras <- subset(restocompras,duplicompras5!=TRUE)
+restocompras <- subset(restocompras,duplicompras5!=FALSE)
+
+# luego hago un merge para ver de la primera a la cuarta compra, por email
+setnames(primerascompras, 1:15,c("email","n.compras","pais.origen", "pri.aerolinea","pri.tarifausd","pri.feeusd","pri.porcentajefee","pri.cuotas","pri.tipovuelo","pri.domestico", "pri.ruta","pri.n.pasajeros","pri.duracion","pri.anticipacion","pri.fechareserva")) 
+setnames(segundascompras, 1:6, c("email","seg.tarifausd","seg.feeusd","seg.porcentajefee","seg.domestico","seg.fechareserva"))
+setnames(tercerascompras, 1:6, c("email","ter.tarifausd","ter.feeusd","ter.porcentajefee","ter.domestico","ter.fechareserva"))
+setnames(cuartascompras, 1:6, c("email","cuar.tarifausd","cuar.feeusd","cuar.porcentajefee","cuar.domestico","cuar.fechareserva"))
+setnames(quintascompras, 1:6, c("email","quin.tarifausd","quin.feeusd","quin.porcentajefee","quin.domestico","quin.fechareserva"))
+
+primeraacuarta <- merge(x = primerascompras, 
+                        y = segundascompras[ ,c("email","seg.fechareserva")],
+                        by = "email", all.x=TRUE)
+primeraacuarta <- merge(x = primeraacuarta,
+                        y = tercerascompras[ ,c("email","ter.fechareserva")], 
+                        by = "email", all.x=TRUE)
+primeraacuarta <- merge(x = primeraacuarta,
+                        y = cuartascompras[ ,c("email","cuar.fechareserva")], 
+                        by = "email", all.x=TRUE)
+primeraacuarta <- merge(x = primeraacuarta,
+                        y = quintascompras[ ,c("email","quin.fechareserva")], 
+                        by = "email", all.x=TRUE)
+
+primeraacuarta$diashastasegunda <- round(as.numeric(primeraacuarta$seg.fechareserva - primeraacuarta$pri.fechareserva), digits=0)
+
+primeraacuarta$haysegunda <- ifelse(is.na(primeraacuarta$diashastasegunda),0, 1)
+
+#cuento la cantidad de compras por user
+primeraacuarta$cuantas.compras.posteriores <- primeraacuarta$n.compras - 1
+  
+# primeraysegunda$diashastasegunda es una variable "difftime". 
+# si no la paso a numeric me va a traer problemas con la regresion
+primeraacuarta$diashastasegunda <- as.numeric(primeraacuarta$diashastasegunda)
+
+# una tablita mas que me deja solo a los que hicieron al menos dos compras
+comprarondos <- subset(primeraacuarta, is.na(seg.fechareserva)==F)
+
+# para sacar la notacion cientifica
+options(scipen=999)
+
+# elimino algunas cosas del environment
+rm(duplicompras1,duplicompras2,duplicompras3,duplicompras4,duplicompras5,
+   cuartascompras,tercerascompras,segundascompras,restocompras,primerascompras,quintascompras)
+
+#### Correlaciones ####
+
+# veo las correlaciones entre las variables. solo puedo hacerlo con las numericas. 
+
+primeraacuarta.num <- subset(primeraacuarta, select=c(haysegunda,
+                                                      cuantas.compras.posteriores, 
+                                                      diashastasegunda, 
+                                                      pri.feeusd,pri.porcentajefee, pri.tarifausd,
+                                                      pri.anticipacion, pri.duracion, 
+                                                      pri.domestico))
+
+# If use has the value "pairwise.complete.obs" then the correlation or covariance between each pair 
+# of variables is computed using all complete pairs of observations on those variables. 
+correlaciones.por.pares <- round((cor(primeraacuarta.num, use="pairwise.complete.obs")), digits=2)
+View(correlaciones.por.pares)
+
+#### Regresiones ####
+
+# MODELO 1: con todos los datos, el porcentaje de fee afecta la probabilidad de que compre por segunda vez?
+glm1 <- glm(haysegunda ~ pri.porcentajefee + pri.feeusd +
+             pri.domestico + pri.anticipacion + pri.duracion,
+            data = primeraacuarta, family = binomial )
+summary(glm1)
+
+# aca en el modelo con todas las variables, R me tira "Warning message: glm.fit: fitted 
+# probabilities numerically 0 or 1 occurred". Es porque existe una combinacion de variables 
+# explicativas que hace que todos los resultados (con cierto threshold) se dividan en 
+# 1 o 0 acertando. es un problema de alguna variable. el problema de sacarlas es que resto
+# capacidad de explicacion al modelo. pero sacando una por una veo que anticipacion no es signif
+# y que sacarla del modelo me soluciona el problema.
+
+glm1.b <- glm(haysegunda ~ pri.porcentajefee  + pri.feeusd,
+            data = primeraacuarta, family = binomial )
+summary(glm1.b)
+
+
+glm1.b <- as.data.frame(predict(glm1.b, type = "response"))
+write.csv(glm1.b, file = "glm2.csv")
+
+# le agrego la prob a la tabla primeraacuarta para ver que onda
+primeraacuarta <- as.data.frame(primeraacuarta)
+primeraacuarta1 <- merge(primeraacuarta, glm1.b, by="row.names")
+write.csv(primeraacuarta1, file = "glm1.csv")
+
+# curva ROC 
+plot(roc(primeraacuarta1$haysegunda, primeraacuarta1$predict))
+roc(primeraacuarta1$haysegunda, primeraacuarta1$predict, print.thres=T, print.auc=T, plot=T)
+
+# MODELO 2: con todos los datos, el porcentaje de fee o la tarifa total afectan la cantidad de compras futuras?
+lm2 <- lm(primeraacuarta$cuantas.compras.posteriores ~ primeraacuarta$pri.porcentajefee + 
+            primeraacuarta$pri.feeusd)
+summary(lm2)
+
+lm2.predict <- predict(lm2)
+lm2pred <- merge(primeraacuarta, lm2.predict, by="row.names")
+write.csv(lm2pred, file = "lm2.csv")
+
+lm2.b <- lm(primeraacuarta$cuantas.compras.posteriores ~ primeraacuarta$pri.porcentajefee + 
+            primeraacuarta$pri.anticipacion + primeraacuarta$pri.duracion)
+summary(lm2.b)
+
+plot(primeraacuarta$cuantas.compras.posteriores, primeraacuarta$pri.porcentajefee)
+abline(lm2)
+
+
+# MODELO 3: con solo datos de quienes compraron al menos dos veces, el porcentaje de fee o 
+# la tarifa total afectan la cantidad de dias que pasan hasta que compra por segunda vez?
+lm3 <- lm(comprarondos$diashastasegunda ~ comprarondos$pri.porcentajefee + 
+            comprarondos$pri.feeusd)
+summary(lm3)
+
+lm3 <- lm(comprarondos$diashastasegunda ~ comprarondos$pri.porcentajefee + 
+            comprarondos$pri.feeusd  +  comprarondos$pri.anticipacion
+          )
+summary(lm3)
+
+#========================================================
+
+#### Que pasa en las rutas SAO - RIO y RIO - SAO  ####
+# MODELO 1: con todos los datos, el porcentaje de fee afecta la probabilidad de que compre por segunda vez?
+
+
+glm2.ruta <- glm(haysegunda ~ pri.porcentajefee + pri.feeusd,
+            data = primeraacuarta, subset=pais.origen=="AR", family = binomial )
+summary(glm2.ruta)
+
+glm1 <- as.data.frame(predict(glm2.ruta, type = "response"))
+write.csv(glm1, file = "glm1.csv")
+
+#### Que pasa en las rutas SAO - RIO y RIO - SAO  ####
+# MODELO 1: con todos los datos, el porcentaje de fee afecta la probabilidad de que compre por segunda vez?
+, subset=primeraacuarta$pais.origen=="CO"
+
+lm2.segmento <- lm(primeraacuarta$cuantas.compras.posteriores ~ primeraacuarta$pri.porcentajefee + 
+            primeraacuarta$pri.feeusd)
+summary(lm2.segmento)
+
+# MODELO 3: con solo datos de quienes compraron al menos dos veces, el porcentaje de fee o 
+# la tarifa total afectan la cantidad de dias que pasan hasta que compra por segunda vez?
+
+
+lm3.segmento <- lm(comprarondos$diashastasegunda ~ comprarondos$pri.porcentajefee + 
+                     comprarondos$pri.feeusd, subset=comprarondos$pais.origen=="BR")
+summary(lm3.segmento)
+
+
+
+
+#### IDEAS NUEVAS ####
+Hola Vero, con esta informacion se podrian hacer cosas nuevas como ver caracteristicas de viajes 
+posteriores. ejemplo "vuela siempre en familia" o "cambia de destino" o "suele hacer viajes dom o internac"
+
+
+#### RUTAS ####
+# agrupo las rutas con mas frecuencia que tiene el 20% de los vuelos, 
+# y las rutas con menos frecuencia que tiene el 20% de los vuelos, 
+
+primeraacuarta$pri.ruta <- as.character(primeraacuarta$pri.ruta) 
+rutas.pop <- table(primeraacuarta$pri.ruta)
+rutas.pop <-as.data.frame(rutas.pop)
+colnames(rutas.pop)<-c("ruta","n.compras")
+rutas.pop <- rutas.pop[with(rutas.pop, order(-n.compras)),]
+rutas.impop <- rutas.pop[with(rutas.pop, order(-n.compras)),]
+rutas.pop$compras.acum <- cumsum(rutas.pop$n.compras) 
+rutas.pop <- subset(rutas.pop, compras.acum < (0.20*sum(rutas.pop$n.compras)))
+rutas.impop$compras.acum <- cumsum(rutas.impop$n.compras)
+rutas.impop <- subset(rutas.impop, compras.acum > (0.80*sum(rutas.impop$n.compras)))
+rutas.impop$compras.acum <- NULL
+rutas.pop$compras.acum <- NULL
+rutas.impop$n.compras <- NULL
+rutas.pop$n.compras <- NULL
+
+vuelos.pop <- merge(primeraacuarta, rutas.pop, by.x="pri.ruta", by.y="ruta")
+vuelos.impop <- merge(primeraacuarta, rutas.impop, by.x="pri.ruta", by.y="ruta")
+comprarondos.pop <- subset(vuelos.pop, is.na(seg.fechareserva)==F)
+comprarondos.impop <- subset(vuelos.impop, is.na(seg.fechareserva)==F)
+
+# cuantos usuarios que primero volaron una ruta popular compraron mas de un vuelo?
+
+#cuantas compras en promedio compraron los que empezaron comprando una ruta popular?
+mean(vuelos.pop$n.compras)
+
+#cuantas compras en promedio compraron los que empezaron comprando una ruta impopular?
+mean(vuelos.impop$n.compras)
+
+length(vuelos.pop$n.compras)
+
+sum(vuelos.pop$n.compras)
+length(vuelos.pop$n.compras)
+
+
+lm2.impop <- lm(vuelos.impop$cuantas.compras.posteriores ~ vuelos.impop$pri.porcentajefee + 
+                  vuelos.impop$pri.feeusd)
+summary(lm2.impop)
+
+
+
+##############
+
+comprarondos.num <- subset(comprarondos, select=c(cuantas.compras.posteriores,
+                                                      pri.feeusd,pri.porcentajefee,
+                                                      pri.anticipacion, pri.duracion, 
+                                                      pri.domestico))
+ 
+correlaciones.por.pares2 <- round((cor(comprarondos.num, use="pairwise.complete.obs")), digits=2)
+View(correlaciones.por.pares2)
+
+
+primeraacuarta$pri.cuotas <- as.numeric(primeraacuarta$pri.cuotas)
+BR <- subset(primeraacuarta,pais.origen=="CL")
+summary(primeraacuarta)
+
+
+
+# busco las principales 5 rutas
+compras$ruta <- as.character(compras$ruta) 
+rutas.pop <- table(compras$ruta)
+rutas.pop <-as.data.frame(rutas.pop)
+colnames(rutas.pop)<-c("ruta","n.compras")
+rutas.pop <- rutas.pop[with(rutas.pop, order(-n.compras)),]
+rutas.pop <- rutas.pop[1:10, ]
+
+# elijo: 
+# SAO - RIO, 
+# SAO - SSA, 
+# SAO - REC, 
+# BUE - SCL, 
+# BUE - COR
