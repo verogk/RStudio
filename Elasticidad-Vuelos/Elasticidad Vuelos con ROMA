@@ -1,0 +1,580 @@
+setwd("/home/despegar/rstudio_data/vseminario/Beer/")
+
+# Levantamos la data
+#beer <- read.delim("/home/despegar/rstudio_data/vseminario/Beer/beer22k.csv", sep=",", header =T)
+
+beer <- read.delim("/home/despegar/rstudio_data/vseminario/Beer/beerroma3.csv", sep=",", header =T)
+
+beer <- as.data.frame(beer)
+
+# Me quedo solo con las obs. donde el usuario tuvo que decidir entre aceptar y rechazar
+
+beer <- subset(beer, result %in% c("ACCEPTED","REJECTED"))
+
+beer$result <- ifelse(beer$result == "ACCEPTED", 1, 0)
+
+# arreglo los NA de payment method
+ 
+beer$payment.method <- ifelse(beer$payment.method=="", NA, as.character(beer$payment.method) )
+
+# numeros de cuotas as.numeric
+
+beer$installments <- as.numeric(as.character(beer$installments))
+
+
+# # Ratio dias de semana y fines de semana
+beer$ci.date <- as.Date(strptime(beer$ci.date, "%d/%m/%Y"))
+beer$co.date <- as.Date(strptime(beer$co.date, "%d/%m/%Y"))
+
+# duracion del viaje
+beer$duracion <- round(as.numeric(beer$co.date - beer$ci.date), digits=0)
+
+#esto me dice el nombre del dia de la semana
+beer$dayci <- weekdays(as.Date(beer$ci.date))
+# esto me dice el numero de dia de semana, del 0 al 6, empezando por el domingo = 0 y terminando por sabado = 6
+beer$ndayci <- as.POSIXlt(as.Date(beer$ci.date))$wday
+# quiero que el domingo sea 7 en vez de 0
+beer$ndayci <- as.numeric(gsub(0, 7, beer$ndayci))
+# cuantas semanas completas de 7 dias (con dos dias de finde) hay en la duracion del viaje?
+# trunc(duracion/7)
+beer$semanascomp <- trunc(beer$duracion/7)
+# resto de dias fuera de semanas completas:
+beer$resto <- trunc(beer$duracion) - beer$semanascomp * 7
+# cuento dias de fin de semana extras a la semana completa 
+beer$diaextra <- ifelse(beer$ndayci == 7, 1,
+                        ifelse((beer$resto + beer$ndayci) == 7, 1, 
+                               ifelse((beer$resto + beer$ndayci) > 7, 2, 0)))
+# Saco el numero de dias de finde (dos por semana completa, mas los dias extra)
+beer$diasfinde <- beer$semanascomp * 2 + beer$diaextra 
+# saco el ratio "dias de finde" / "duracion"
+beer$ratiofinde <- ifelse( (beer$dayci == "Saturday" | beer$dayci == "Sunday" ) & beer$duracion == 0 ,1,
+                           ifelse(beer$duracion == 0, NA, (beer$diasfinde ) / (beer$duracion)) )
+
+# Borro estas variables
+beer$dayci <- NULL
+beer$ndayci <- NULL
+beer$diaextra <- NULL
+beer$semanascomp  <- NULL
+beer$resto  <- NULL
+beer$diasfinde  <- NULL
+
+# timestamp a hora local
+beer$timestamp.local <- as.POSIXct(strptime(beer$timestamp, "%d/%m/%Y %H:%M"))
+
+beer$timestamp.local <- ifelse (beer$country=="CO" | beer$country=="EC" | beer$country=="MX" | beer$country=="PE", beer$timestamp.local - 60*60*2, 
+                                        ifelse (beer$country=="CR", beer$timestamp.local - 60*60*3, 
+                                                ifelse (beer$country=="US", beer$timestamp.local - 60*60*1, 
+                                                        ifelse (beer$country=="US", beer$timestamp.local - 60*60*1.5, beer$timestamp.local))))
+
+beer$timestamp.local <- as.POSIXct(beer$timestamp.local, origin = "1970-01-01")
+
+beer$hora.local <- as.numeric(format(beer$timestamp.local, "%H")) +   as.numeric(format(beer$timestamp.local, "%M"))/60
+
+
+
+# Viaje Domestico o Internacional 
+
+# data.itinerary.route me dice origen y destino unidas por un "-"
+# la funcion regexpr me dice el numero de ubicacion de "-" en el string. 
+# substr extrae una parte del string si le indico en que nro. de caracter empezar y terminar.
+# le digo que termine uno antes del "-" para el origen, y que empiece uno despues para el destino
+
+beer$data.itinerary.route <- as.character(beer$data.itinerary.route ) 
+
+beer$origen <- ifelse(beer$data.itinerary.route=="", NA, 
+                      substr(x = beer$data.itinerary.route, start = 1, 
+                             stop = (regexpr("-", beer$data.itinerary.route, TRUE) -1)))
+
+#esta solucion no es perfecta porque cuando hay multiples destinos te da el primero
+
+beer$destino <- ifelse(beer$data.itinerary.route=="", NA, 
+                       ifelse (nchar(beer$data.itinerary.route) == 7, 
+                        substr(x = beer$data.itinerary.route, 
+                               start = (regexpr("-", beer$data.itinerary.route, TRUE) +1), stop = 7 ),
+                        substr(x = beer$data.itinerary.route, 
+                               start = (sapply(gregexpr("-", beer$data.itinerary.route), tail, 1)-3), 
+                               stop = (sapply(gregexpr("-", beer$data.itinerary.route), tail, 1)-1))))
+
+
+# este sapply me dice el numero de caracter donde esta ubicado el ultimo guion
+# beer$destinoub <- sapply(gregexpr("-", beer$data.itinerary.route), tail, 1)
+# lo uso para traer el ultimo destino, ya que en multiples destinos el ultimo iata es el origen.
+
+# Me bajo una tabla con coordenadas de ciudades de origen y destino y pais de origen y destino
+
+load("/home/despegar/rstudio_data/vseminario/datos utiles/info iatas.rda")
+
+iatas.destino <- subset(iatas.frame[,c(5,7,8,12,14)])
+
+colnames(iatas.destino) <- c("destino", "lat.destino", "lon.destino", "country.destino", "continent.destino")
+
+beer <- merge(beer, iatas.destino, all.x=T, by="destino")
+
+iatas.origen <- subset(iatas.destino[,c(1,2,3,4)])
+
+colnames(iatas.origen) <- c("origen", "lat.origen", "lon.origen", "country.origen")
+
+beer <- merge(beer, iatas.origen, all.x=T, by="origen")
+
+source("/home/despegar/rstudio_data/vseminario/Funciones/funcion distancia km.R")
+
+beer$lat.origen <- as.numeric(as.character(beer$lat.origen))
+beer$lon.origen <- as.numeric(as.character(beer$lon.origen))
+beer$lat.destino <- as.numeric(as.character(beer$lat.destino))
+beer$lon.destino <- as.numeric(as.character(beer$lon.destino))
+
+beer$distancia <- earth.dist ( beer$lat.origen, beer$lon.origen, beer$lat.destino, beer$lon.destino)
+beer$distancia <- mapply(earth.dist, beer$lat.origen, beer$lon.origen, beer$lat.destino, beer$lon.destino)
+
+beer$lat.origen <- NULL
+beer$lon.origen <- NULL
+beer$lat.destino <- NULL
+beer$lon.destino <- NULL
+
+# quiero ver si las rutas son internacionales o domesticos
+# para eso comparo pais de origen y pais de destino y veo si coinciden
+
+beer$domestico <- ifelse(beer$route.type=="international", 0, 
+                         ifelse(beer$route.type=="domestic", 1, 
+                                ifelse(((is.na(beer$country.origen) == T) | (is.na(beer$country.destino) == T) ), NA ,
+                                       ifelse((beer$country.origen == beer$country.destino ), 1, 0))))
+  
+  
+
+# compra en Horario Laboral = 1, hogar = 0
+# dire que horario laboral es de 6 am a 7 pm
+
+beer$compra.hora.laboral <- ifelse((beer$hora.local > 6) 
+                                   & (beer$hora.local < 19) 
+                                   & (beer$date.day_of_week < 6 ), 1 , 0)
+# compra tarde a la noche = 1, en otro momento = 0
+# dire que "late night" es de 10pm a 5 am 
+
+beer$compra.late.night <- ifelse((beer$hora.local > 21) | (beer$hora.local < 6), 1 , 0)
+
+
+# compra durante el finde = 1, en la semana = 0
+
+# date.day_of_week me dice el numero de dia de semana, del 1 al 7, empezando por el lunes = 1 y terminando por domingo = 7
+
+beer$compra.finde <- ifelse(beer$date.day_of_week < 6, 0 , 1)
+
+# anticipacion
+
+beer$timestamp <- as.Date(strptime(beer$timestamp, "%d/%m/%Y %H:%M"))
+
+beer$anticipacion <- as.numeric(beer$ci.date) - as.numeric(beer$timestamp)
+
+# compra desde un mobile device? (tables o smartphone =1,desktop = 0)
+
+beer$mobile <- ifelse(beer$channel=="site-smartphone" | beer$channel=="site-tablet", 1, 0)
+
+rm(iatas.destino, iatas.frame, iatas.origen, earth.dist)
+
+# checkeo que sean numericas
+# price.jump.percentaje	price.post.jump	original.price	currency.rate	original.price.usd
+# price.jump.amount.usd	price.post.jump.usd	result n.adults	n.children	n.infants	
+# n.passengers installments	date.day	date.hour	class	seats.remaining	ci.date	co.date	
+# duracion ratiofinde	country.destino	continent.destino	country.origen	distancia	domestico	
+# compra.hora.laboral	compra.finde
+
+# viaja con niños?
+# beer$kids <- ifelse(beer$n.adults>0 & is.na(beer$n.children) & is.na(beer$n.infants), 0, 1 )
+beer$kids <- ifelse(beer$n.children > 0, 1, 0 )
+
+# ROMA se prendio para todos los países el 13 de mayo
+
+beer.limit <- subset(beer, timestamp > "2015-05-12")
+beer.limit <- as.data.table(beer.limit)
+beer.limit <- beer.limit[order(tracker.id,timestamp)]
+write.csv(beer.limit, file = "beerlimit.csv")
+
+#### Correlaciones ####
+
+# veo las correlaciones entre las variables. solo puedo hacerlo con las numericas. 
+
+beer.num <- subset(beer.limit, select=c(result, price.post.jump.usd, price.jump.percentaje, 
+                                        price.jump.amount.usd, installments, kids, n.children, anticipacion, 
+                                        seats.remaining, duracion, ratiofinde,domestico,
+                                        distancia, compra.finde, compra.hora.laboral, 
+                                        compra.late.night,date.day, mobile))
+
+# The presence of missing observations will produce an error. 
+# If use is "complete" then missing values are handled by casewise deletion 
+# Otherwise, by default use = "everything".
+# round es para que se limite a 2 decimales
+
+correlaciones.complete <- round((cor(beer.num, use="complete")), digits=2)
+View(correlaciones.complete)
+write.csv(correlaciones.complete, file = "correl.csv")
+
+# If use has the value "pairwise.complete.obs" then the correlation or covariance between each pair 
+# of variables is computed using all complete pairs of observations on those variables. 
+correlaciones.por.pares <- round((cor(beer.num, use="pairwise.complete.obs")), digits=2)
+View(correlaciones.por.pares)
+write.csv(correlaciones.por.pares, file = "correlpares.csv")
+
+# Producto.Cuotas tiene una correl alta con resultado 
+# -> pago en mas cuotas, mas se diluye ese aumento de precio
+
+# Compra.horario.laboral tiene una correl muy baja negativa (-0.57) con Compra.finde 
+# -> es obvio: horario laboral esta definido como dias habiles (no-finde) entre las 6 y 19 hs
+
+# Producto.Cuotas tiene una correl baja (-0.015) con tarifa_con_cargos_usd 
+# -> raro, hubiera esperado una relacion fuerte entre mayor precio y mas cuotas. ploteando tiene una forma como de y=b^x
+plot(beer$Producto.Cuotas, beer$tarifa_con_cargos_usd, xlim=c(0,25), ylim=c(0,10000))
+
+# tarifa_con_cargos_usd tiene una correl positiva (0.5) con cantidadpasajeros (obvio) , 
+# positiva (0.2) con duracion y positiva (0.28) con anticipacion 
+# Duracion tiene correl positiva (0.26) con distancia
+# (cuanto mas va a gastar, antes compra y viaja por mas dias... para "aprovechar" vuelo caro/distante?) 
+
+# tarifa_con_cargos_usd tiene una correl positiva (0.32) con distancia, 
+# y negativa (-0.35) con domestico (en parte por menor distancia, en parte por menos impuestos si es domestico) 
+
+# data.booking.price_jump.percentaje tiene correl positiva (0.11) con distancia -> no se por que
+
+# anticipacion tiene correl negativa (-0.32) con domestico 
+# -> pueden ser mas vuelos de fin de semana y por trabajo, que se compran con menos anticipacion?
+# anticipacion tiene correl positiva (0.18) con duracion y (0.24) con cantidadpasajeros
+# -> si es un viaje de mucha gente o familias, necesita mas tiempo para coordinar y por ser mas gasto, busca antes
+# -> si es un viaje mas largo, va a gastar mas y anticipa mas. tal vez debe coordinar varios vuelos u hoteles
+
+
+
+#### Regresiones ####
+
+# Regresion 1: <-- MODELO BASE!!
+#regresores son todas las numericas 
+
+glm0 <- glm(result ~ price.jump.percentaje  + price.jump.amount.usd + 
+              + price.post.jump.usd + installments + kids + duracion + 
+              domestico + distancia + anticipacion + seats.remaining + 
+              ratiofinde + date.day + mobile + compra.finde + 
+              compra.hora.laboral  + compra.late.night ,
+            data = beer.limit, family = binomial )
+
+summary(glm0)
+
+glm0.fitted <- as.data.frame(predict(glm0, type = "response"))
+write.csv(glm0.fitted, file = "glm0.csv")
+
+# le agrego la prob a la tabla beer.limit para ver que onda
+# beer.limit <- as.data.frame(beer.limit)
+pred.0 <- merge(beer.limit, glm0.fitted, by="row.names")
+
+# curva ROC
+plot(roc(pred.0$result, pred.0$predict))
+roc(pred.0$result, pred.0$predict, print.thres=T, print.auc=T, plot=T, main="Curva ROC para Modelo Base", cex.main=1.1)
+coords(c(pred.0$result, pred.0$predict), "best")
+
+# Regresion 2
+# regresores son % de aumento de precio y precio final en dolares
+
+glm2 <- glm(result ~  price.jump.amount.usd + 
+              price.jump.percentaje ,
+            data = beer.limit, family = binomial )
+summary(glm2)
+
+glm2.fitted <- predict(glm2, type = "response")
+write.csv(glm2.fitted, file = "glm2.csv")
+
+# Los coeficientes se interpretan como "si la variable explicativa (suba porcentual) aumenta en una unidad, 
+# el logaritmo de la probabilidad de que el usuario acepte baja en 0.062 unidades.
+# alternativamente, puedo pasar los coefs a algo mas facil de interpretar:
+# exp(glm2$coefficients)
+# Ahora se interpreta como "por cada unidad que sube la variable explicativa (un 1% de aumento en la tarifa)
+# la probabilidad de que el usuario acepte baja en (0.93957-1) = 0.06 = 6 %.
+
+
+# Regresion 3:  
+# probando diferentes formas sacando las no significativas
+# domestico y distancia son las dos signif pero tenian correl. pruebo sacarlas de a una
+# si saco domestico y distancia, que tienen correl alta con precio en dolares, precio en dolares se hace signif.
+
+glm3 <- glm(result ~ price.jump.percentaje + price.jump.amount.usd + duracion + domestico + 
+              seats.remaining + date.day + compra.finde,
+            data = beer.limit, family = binomial )
+
+summary(glm3)
+
+glm3.fitted <- predict(glm3, type = "response")
+write.csv(glm3.fitted, file = "glm3.csv")
+
+# le agrego la prob a la tabla beer.limit para ver que onda
+# beer.limit <- as.data.frame(beer.limit)
+pred.3 <- merge(beer.limit, glm3.fitted, by="row.names")
+
+# curva ROC
+plot(roc(pred.3$result, pred.3$y))
+roc(pred.3$result, pred.3$y, print.thres=T, print.auc=T, plot=T, main="Curva ROC para Modelo 3", cex.main=1.1)
+
+# Regresion 4
+# quiero ver cuanto explica el cambio de precio por si solo
+
+glm4 <- glm(result ~ price.jump.percentaje,
+            data = beer.limit, family = binomial )
+
+summary(glm4)
+
+glm4.fitted <- predict(glm4, type = "response")
+write.csv(glm4.fitted, file = "glm4.csv")
+
+# le agrego la prob a la tabla beer.limit para ver que onda
+# beer.limit <- as.data.frame(beer.limit)
+pred.4 <- merge(beer.limit, glm4.fitted, by="row.names")
+
+# curva ROC
+plot(roc(pred.4$result, pred.4$y))
+roc(pred.4$result, pred.4$y, print.thres=T, print.auc=T, plot=T, main="Curva ROC para Modelo 2", cex.main=1.1)
+
+#### Regresiones por países ####
+
+# Modelo Base para ARGENTINA
+beer.AR <- subset(beer.limit, country %in% c("AR"))
+beer.AR <- subset(beer.AR, select=c(result, price.post.jump.usd, price.jump.percentaje, 
+                                       price.jump.amount.usd, installments, kids, anticipacion, 
+                                       seats.remaining, duracion, ratiofinde,domestico,
+                                       distancia, compra.finde, compra.hora.laboral, 
+                                       compra.late.night,  date.day, mobile))
+
+correl.AR <- round((cor(beer.AR, use="complete")), digits=2)
+write.csv(correl.AR, file = "correlAR.csv")
+
+glm0.AR <- glm(result ~ price.post.jump.usd + price.jump.amount.usd + ratiofinde + 
+                 price.jump.percentaje + installments + anticipacion + 
+                 duracion + n.passengers + domestico + distancia + compra.finde + 
+                 compra.hora.laboral + seats.remaining + date.day + compra.late.night,
+               data = beer.limit, subset=country=="AR", family = binomial )
+
+summary(glm0.AR)
+
+glm0.AR.fitted <- predict(glm0.AR, type = "response")
+write.csv(glm0.AR.fitted, file = "glmFAR.csv")
+
+
+
+# Modelo Final para ARGENTINA
+
+glmF.AR <- glm(result ~ price.jump.percentaje + price.post.jump.usd + 
+                 installments + compra.finde + domestico + mobile ,
+               data = beer.limit, subset=country=="AR", family = binomial )
+
+summary(glmF.AR)
+
+glmF.AR.fitted <- as.data.frame(predict(glmF.AR, type = "response"))
+write.csv(glmF.AR.fitted, file = "glmFAR.csv")
+
+# le agrego la prob a la tabla beer.limit para ver que onda
+beer.limit <- as.data.frame(beer.limit)
+pred.AR <- merge(beer.limit, glmF.AR.fitted, by="row.names")
+
+# curva ROC
+plot(roc(pred.AR$result, pred.AR$predict))
+roc(pred.AR$result, pred.AR$predict)
+roc(pred.AR$result, pred.AR$predict, print.thres=T, print.auc=T, plot=T, main="Curva ROC para Modelo AR", cex.main=1.1)
+
+# Modelo Base para BRASIL
+beer.BR <- subset(beer.limit, country %in% c("BR"))
+beer.BR <- subset(beer.BR, select=c(result, price.post.jump.usd, price.jump.percentaje, 
+                                       price.jump.amount.usd, installments, kids, anticipacion, 
+                                       seats.remaining, duracion, ratiofinde,domestico,
+                                       distancia, compra.finde, compra.hora.laboral, 
+                                       compra.late.night,  date.day, mobile))
+
+correl.BR <- round((cor(beer.BR, use="complete")), digits=2)
+write.csv(correl.BR, file = "correlBR.csv")
+
+glm0.BR <- glm(result ~ price.post.jump.usd + price.jump.amount.usd + ratiofinde + 
+                 price.jump.percentaje + installments + anticipacion + 
+                 duracion + n.passengers + domestico + distancia + compra.finde + 
+                 compra.hora.laboral + seats.remaining + date.day + compra.late.night,
+               data = beer.limit, subset=country=="BR", family = binomial )
+
+summary(glm0.BR)
+
+glm0.BR.fitted <- predict(glm0.BR, type = "response")
+write.csv(glm0.BR.fitted, file = "glm0BR.csv")
+
+# Modelo Final para BRASIL
+
+glmF.BR <- glm(result ~  price.jump.amount.usd + duracion +
+                 price.jump.percentaje + installments + anticipacion + 
+                 compra.finde + domestico +
+                 date.day + compra.finde,
+               data = beer.limit, subset=country=="BR", family = binomial )
+
+summary(glmF.BR)
+
+glmF.BR.fitted <- predict(glmF.BR, type = "response")
+write.csv(glmF.BR.fitted, file = "glmFBR.csv")
+
+# le agrego la prob a la tabla beer.limit para ver que onda
+# beer.limit <- as.data.frame(beer.limit)
+pred.BR <- merge(beer.limit, glmF.BR.fitted, by="row.names")
+
+# curva ROC
+plot(roc(pred.BR$result, pred.BR$y))
+roc(pred.BR$result, pred.BR$y, print.thres=T, print.auc=T, plot=T, main="Curva ROC para Modelo BR", cex.main=1.1)
+
+# Modelo Base para cada COLOMBIA
+beer.CO <- subset(beer.limit, country %in% c("CO"))
+beer.CO <- subset(beer.CO, select=c(result, price.post.jump.usd, price.jump.percentaje, 
+                                       price.jump.amount.usd, installments, kids, anticipacion, 
+                                       seats.remaining, duracion, ratiofinde,domestico,
+                                       distancia, compra.finde, compra.hora.laboral, 
+                                       compra.late.night,  date.day, mobile))
+
+correl.CO <- round((cor(beer.CO, use="complete")), digits=2)
+write.csv(correl.CO, file = "correlCO.csv")
+
+glm0.CO <- glm(result ~ price.post.jump.usd + price.jump.amount.usd + ratiofinde + 
+                 price.jump.percentaje + installments + anticipacion + 
+                 duracion + domestico + distancia + compra.finde + 
+                 compra.hora.laboral + seats.remaining + date.day + compra.late.night + kids + mobile,
+               data = beer.limit, subset=country=="CO", family = binomial )
+
+summary(glm0.CO)
+
+glm0.CO.fitted <- predict(glm0.CO, type = "response")
+View(glm0.CO.fitted)
+write.csv(glm0.CO.fitted, file = "glm0CO.csv")
+
+# Modelo Final para  COLOMBIA
+
+glmF.CO <- glm(result ~  price.jump.amount.usd + price.jump.percentaje + 
+                 seats.remaining,
+               data = beer.limit, subset=country=="CO", family = binomial )
+
+summary(glmF.CO)
+
+glmF.CO.fitted <- predict(glmF.CO, type = "response")
+write.csv(glmF.CO.fitted, file = "glmFCO.csv")
+
+# le agrego la prob a la tabla beer.limit para ver que onda
+# beer.limit <- as.data.frame(beer.limit)
+pred.CO <- merge(beer.limit, glmF.CO.fitted, by="row.names")
+
+# curva ROC
+plot(roc(pred.CO$result, pred.CO$y))
+roc(pred.CO$result, pred.CO$y, print.thres=T, print.auc=T, plot=T, main="Curva ROC para Modelo CO", cex.main=1.1)
+
+# Modelo Base para MEXICO
+beer.MX <- subset(beer.limit, country %in% c("MX"))
+beer.MX <- subset(beer.MX, select=c(result, price.post.jump.usd, price.jump.percentaje, 
+                                       price.jump.amount.usd, installments, kids, anticipacion, 
+                                       seats.remaining, duracion, ratiofinde,domestico,
+                                       distancia, compra.finde, compra.hora.laboral, 
+                                       compra.late.night,  date.day, mobile))
+
+correl.MX <- round((cor(beer.MX, use="complete")), digits=2)
+write.csv(correl.MX, file = "correlMX.csv")
+
+glm0.MX <- glm(result ~ price.post.jump.usd + price.jump.amount.usd + ratiofinde + 
+                 price.jump.percentaje + installments + anticipacion + 
+                 duracion + kids + domestico + distancia + compra.finde + 
+                 compra.hora.laboral + seats.remaining + date.day + compra.late.night + mobile,
+               data = beer.limit, subset=country=="MX", family = binomial )
+
+summary(glm0.MX)
+
+glm0.MX.fitted <- predict(glm0.MX, type = "response")
+write.csv(glm0.MX.fitted, file = "glm0MX.csv")
+
+# Modelo Final para MEXICO
+
+glmF.MX <- glm(result ~ price.jump.percentaje + duracion +  domestico + mobile,
+               data = beer.limit, subset=country=="MX", family = binomial )
+
+summary(glmF.MX)
+
+glmF.MX.fitted <- predict(glmF.MX, type = "response")
+write.csv(glmF.MX.fitted, file = "glmFMX.csv")
+
+# le agrego la prob a la tabla beer.limit para ver que onda
+# beer.limit <- as.data.frame(beer.limit)
+pred.MX <- merge(beer.limit, glmF.MX.fitted, by="row.names")
+
+# curva ROC
+plot(roc(pred.MX$result, pred.MX$y))
+roc(pred.MX$result, pred.MX$y, print.thres=T, print.auc=T, plot=T, main="Curva ROC para Modelo MX", cex.main=1.1)
+
+
+
+
+
+##### Price jumps por paises ####
+
+elastic.AR <- glm(result ~ price.jump.percentaje,
+                  data = beer.limit, subset=country=="AR", family = binomial)
+
+summary(elastic.AR)
+
+# promedio de suba de precio en AR
+AR.mean <- as.data.frame(mean(beer.limit[beer.limit$country=="AR","price.jump.percentaje"]))
+colnames(AR.mean) <- c("price.jump.percentaje")
+
+
+glm4.fitted <- predict(glm4, type = "response")
+write.csv(glm4.fitted, file = "glm4.csv")
+
+predict(elastic.AR , newdata = AR.mean,  type = "response")
+
+vector1 <- as.data.frame(seq(0, 60, 0.5))
+colnames(vector1) <- c("price.jump.percentaje")
+
+elastic.AR2 <- predict(elastic.AR , newdata = vector1,  type = "response")
+elastic.AR2 <- as.data.frame(elastic.AR2)
+
+plot(elastic.AR2)
+
+elastic.AR2$dif <- elastic.AR2$predict[-1,] - elastic.AR2$predict[-nrow(elastic.AR2$predic),]
+
+elastic.AR2$dif <- c(0,diff(elastic.AR2$predict))
+colnames(elastic.AR2) <- c("predict")
+class(elastic.AR2$predict)
+
+
+beer.AR <- subset(beer.limit, country %in% c("AR"))
+sum(beer.AR$price.jump.percentaje <= 3 & beer.AR$result == 1, na.rm=TRUE)/sum(beer.AR$price.jump.percentaje <= 3)  
+
+# de gente que acepta y rechaza al 3% de aumento por pais
+sum(beer.limit$country== "VE" & beer.limit$price.jump.percentaje <= 3 
+    & beer.limit$result == 1, na.rm=TRUE)/sum(beer.limit$country== "VE" & beer.limit$price.jump.percentaje <= 3, na.rm=TRUE)  
+sum(beer.limit$country== "VE" & beer.limit$result == 0, na.rm=TRUE) /sum(beer.limit$country== "VE", na.rm=TRUE)
+sum(beer.limit$country== "VE" & beer.limit$result == 0, na.rm=TRUE) 
+sum(beer.limit$country== "VE" & beer.limit$result == 1, na.rm=TRUE) 
+
+sum(beer.limit$price.jump.percentaje <= 3 
+    & beer.limit$result == 1, na.rm=TRUE)/sum(beer.limit$price.jump.percentaje <= 3, na.rm=TRUE)  
+sum(beer.limit$result == 0, na.rm=TRUE) /sum(beer.limit$result == 0 | beer.limit$result == 1, na.rm=TRUE)
+sum(beer.limit$result == 0, na.rm=TRUE) 
+sum(beer.limit$result == 1, na.rm=TRUE) 
+
+
+# cuantas ventas perdimos por no absorber un aumento del 3%?
+sum(beer.limit$result == 0 & beer.limit$, na.rm=TRUE) /sum(beer.limit$country== "VE", na.rm=TRUE)
+sum(beer.limit$country== "VE" & beer.limit$result == 0, na.rm=TRUE) 
+sum(beer.limit$country== "VE" & beer.limit$result == 1, na.rm=TRUE) 
+
+beer.five <- subset(beer.limit, result == 0 & price.jump.percentaje <= 5)
+sum(beer.five$original.price.usd, na.rm=TRUE)
+
+beer.AR1 <- subset(beer.AR, price.jump.percentaje <= 1)
+
+
+beer2 <- beer[,length(unique()),by=list(x,y)]  
+
+beer.AR <- as.data.frame(beer.AR)
+#### reglas para agrupar #####
+beer.BR <- subset(pred.BR, country %in% c("BR"))
+beer.BR1 <- with(beer.AR, order(predict,anticipacion))
+beer.AR1 <- order(beer.AR$predict, beer.AR$anticipacion)
+
+beer.AR1 <-  as.data.frame(with(beer.AR, order(beer.AR$predict, beer.AR$anticipacion)))
+
+
+write.csv(pred.AR, file = "predAR.csv")
+write.csv(pred.BR, file = "predBR.csv")
+write.csv(pred.MX, file = "predMX.csv")
+write.csv(pred.CO, file = "predCO.csv")
