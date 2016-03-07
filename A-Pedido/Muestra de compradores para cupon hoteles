@@ -127,3 +127,48 @@ set.seed(1)
 subset.ind <- sample(seq_len(nrow(solovue.AR)), size = subset.size)
 solovue.AR.5k <- solovue.BR[subset.ind, ]
 solovue.AR.control <- solovue.BR[-subset.ind, ]
+
+#### Test de diferencia de proporciones
+
+#### Levanto la data ####  
+
+setwd("/home/despegar/rstudio_data/vseminario/A pedido")
+
+pentaho <- read.table("/home/despegar/rstudio_data/vseminario/A pedido/ventasdic2.csv", sep=";", header =T, quote = "")
+
+colnames(pentaho) <- c("fecha.cancel","adultos","ninios","infantes","gb", "hid","idproducto","idpais.origen","idpais.destino","idciudad.origen","idciudad.destino",
+                       "ci","co","idcro","rooms","idpais","fechareserva", "tipocliente","email")
+
+pentaho$fechacompra <- paste0(pentaho$id_dim_tiempo_reserva, " ", pentaho$Reserva.Hora)
+ 
+pentaho$fechacompra <- as.POSIXct(pentaho$fechacompra, tz="GMT", format= "%Y%m%d %H:%M:%S")
+
+pentaho <- pentaho[, c("gb", "id_dim_producto", "id_dim_pais", "transaction_code", "semailprincipal","fechacompra")]
+
+pentaho <- pentaho[!duplicated(pentaho[,c("transaction_code")]),]
+
+# Hago una tablita con la hora a la que recibio cupon supuestamente y me quedo con las compras posteriores.
+
+tablamails <- read.table("/home/despegar/rstudio_data/vseminario/A pedido/mailsenviados.csv", sep=",", header =T, quote = "")
+tablamails$hora.envio <- as.POSIXct(tablamails$hora.envio, tz="GMT", format= "%Y%m%d %H:%M:%S")
+
+luego contar cuantos productos de cada tipo se vendieron 
+
+pentaho <- merge(pentaho, tablamails[,c(2:3)], by.x="semailprincipal", by.y="email", all.x=T)
+
+recibieron.cupon <- subset(pentaho, semailprincipal %in% tablamails$email)
+
+pentaho$postmail <- ifelse(pentaho$hora.envio < pentaho$fechacompra, 1, 0)
+  
+aggregate(pentaho$transaction_code, by=list(pentaho$id_dim_producto), FUN = length, na.rm = TRUE)
+
+
+
+#### test z porcentaje que compra hotel ####
+# 0 con 2
+a<-c(176,44)
+b<-c(13072,10784)
+prop.test(a,b)
+
+Luego podemos contrastar la cantidad de productos comprados del grupo de personas que recibió cupón y el del grupo de personas que no recibió cupón, para ver cuál comunicación fue más efectiva.
+
