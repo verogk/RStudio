@@ -1,0 +1,205 @@
+setwd("/home/despegar/rstudio_data/vseminario/A pedido")
+
+source("/home/despegar/rstudio_data/vseminario/Elasticidad Hoteles/MX/MX REMAKE/MX Test Sept Oct Workspace.RData")
+
+names(septooct)
+
+data <- septooct[, c("userid", "datetime", "fl", "cc", "ab", "ci", "co")]
+
+# Grepeo que valores son numericos
+num.vars <- which(sapply(data[1:10000,], function(x) any(grepl("^[0-9]+$",x))))
+
+excl <- which(names(data) %in% c("ci","co"))
+
+num.vars <- setdiff(num.vars, excl)
+
+for(i in num.vars){
+  data[,i] <- as.numeric(as.character(data[,i]))
+}
+
+# limpio el workspace
+rm(excl, i, num.vars)
+
+# Paso la fecha a formato fecha
+#cambio las fechas de todo
+data$ci <- as.character(data$ci)
+data$co <- as.character(data$co)
+
+data$ci <- as.Date(strptime(data$ci, "%Y-%m-%d"))
+data$co <- as.Date(strptime(data$co, "%Y-%m-%d"))
+
+# timestamp de la reserva
+# data$fecha_reserva <- as.Date(as.POSIXct(data$datetime/1000, origin="1970-01-01",tz="GMT"))
+data$fecha_reserva <- as.POSIXct(data$datetime/1000, origin="1970-01-01",tz="GMT")
+
+# saco fechas raras
+datarara <- subset(data, ci < "2015-09-01")
+data <- subset(data, ! row.names(data) %in% row.names(datarara))
+
+rm(datarara) 
+
+# me quedo solo con estos flows (detail, search, thanks, check out)
+#table(data$fl)
+data <- subset(data, fl =="detail" | fl =="search" | fl =="checkout" | fl =="thanks")
+
+# nchar(data[1:10,]$userid) da 36
+data$userid <- as.character(data$userid)
+data <- subset(data, nchar(userid) == 36)
+
+# No necesito a todos los usuarios. Solo a los que cayeron en el brazo 0 del test
+#### AB.TAG ####
+#lo primero que hago es armar una tablita que me diga el tag que recibio cada usuario, para un futuro merge
+# cambio userids a character. Si quedan como factors, cuando haga tables van a incluir
+# todos los user id de tablas anteriores, con frecuencia = 0
+details <- data[,c("userid","ab")]
+details <- subset(details, !ab =="")
+
+library(data.table)
+dataNA<- unique(subset(details, regexpr("rm-h-elasticity2\\|v_NOT-APPLY", details$ab) > 0)) # incluye a "D-rm-h-elasticity2"
+dataNA<- subset(dataNA, !duplicated(dataNA$userid)) 
+
+data0<- subset(details, regexpr("rm-h-elasticity2\\|v_0", details$ab) > 0) # incluye a "D-rm-h-elasticity2"
+data0<- subset(data0, !duplicated(data0$userid)) 
+
+dataNA$abtest <- "Not Apply"
+data0$abtest <- 0
+
+dataNA$ab <- NULL
+data0$ab <- NULL
+
+# Hay usuarios que tienen mas de un tag!! Los identifico para excluirlos
+dupsNA.0 <- as.data.frame(Reduce(intersect, list(dataNA$userid,data0$userid)))
+setnames(dupsNA.0, "userid")
+
+# ahora me quedo con los usuarios unicos que tuvieron tag 0 y con su tag de ab test. 
+# EXCLUYO A LOS USUARIOS A LOS QUE ALGUNA VEZ LES TOCO NOT APPLY
+# luego se hara un merge para que ese tag quede en todas las acciones de un mismo usuario en el sitio.
+ab.tag <- subset(data0, !data0$userid %in% dupsNA.0$userid)
+
+rm(data0, dupsNA.0, details, dataNA)
+
+#### Me quedo en data solo con acciones de usuarios del brazo 0
+original <- data.merge
+data <- merge(data, ab.tag, by="userid")
+
+# VOLVER A EMPEZAR
+data <- original
+
+data$ab <- NULL
+
+data <- as.data.table(data)
+
+#### Separo Buyers y Checkers ####
+# la idea es quedarme con todas las acciones de los chequers pero solo las previas a primera la compra de los buyers
+#Ordenamos los datos por usuario, timestamp
+data <- data[order(userid,datetime)] 
+
+#### BUYERS ####
+# (los que compraron)
+# Solo quiero las acciones de cada usuario cuyo timestamp sea menor al del thanks
+# Pasos a seguir:
+# 0. ordenar de mas antiguo a mas reciente asi me quedo con el primer thanks
+# 1. buscar el timestamp del thanks
+# 2. poner ese timestamp en una columna aparte matcheando con ese user, con un merge
+# 3. subsetear data quedandome solo con acciones donde el timestamp de la accion sea menor 
+#    o igual al de la columna del timestamp fijo del thanks
+# 4. contar los detail y search 
+
+data.merge <- as.data.table(data)
+# me quiero quedar con las acciones mas recientes. por eso ordeno y luego saco userid duplicados
+data.merge <- data.merge[order(data.merge$fecha_reserva, decreasing = FALSE ),]
+
+#ARREGLO
+data.th <- subset(data.merge, fl =="thanks" &  fecha_reserva> "2015-09-03")
+data.th2 <- subset(data.merge, fl =="thanks")
+data.th <- data.th[!duplicated(data.th[,userid]),]
+data.th2 <- data.th2[!duplicated(data.th2[,userid]),]
+setnames(data.th, "fecha_reserva", "fecha_thanks") # aca cambie el nombre de la columna para no confundirme en el merge
+data.merge <- as.data.frame(data.merge)
+data.th <- as.data.frame(data.th)
+
+
+# este merge es para agregar la fecha de compra mas reciente a cada userid
+buyers <- merge(data.merge, data.th[,c("userid","fecha_thanks")], by="userid")
+# si le saco el all.x=T al merge anterior esto es innecesario buyers <- subset(buyers, !is.na(buyers$fecha_thanks))
+
+#me quedo solo con las acciones previas al thanks mas reciente
+buyers$va <- ifelse(buyers$fecha_thanks >= buyers$fecha_reserva, 1, 0) 
+buyers <- subset(buyers, va == 1) 
+
+buyers$va <- NULL
+buyers$fecha_thanks <- NULL
+
+rm(data.th)
+
+buyers$comprador <- 1
+
+#### CHECKERS ####
+checkers <- subset(data, !data$userid %in% data.th2$userid)
+checkers$comprador <- 0
+
+#### uno BUYERS Y CHECKERS ####
+
+data <- rbind(buyers, checkers)
+
+#### Sesiones #####
+data <- as.data.table(data)
+# Agregamos nro. de sesion a la tabla data
+# 1. Ponemos un nro. que indica el nro. de sesion por userid (con cada nuevo userid reinicia en 0)
+data[,action.id:=rank(datetime),list(userid)]
+
+# 2. Aca se hacen dos pasos en uno. Es como si creara un data.auxiliar que tiene userid,
+# ...una variable igual a datetime llamada datetime2, y un action.id que es igual al de la tabla
+# ...data pero corrido un lugar. Entonces hago un merge de esa tabla con data 
+# ...pidiendo que coincidan los userid y action.id con la variable que esta action.id corrida una fila. 
+data = merge(data,data[,list(userid,datetime2=datetime,action.id=action.id+1)],by=c("userid","action.id"),all.x=T)
+data[,time.dif:=datetime-datetime2]
+data[,new.session:=ifelse((datetime-datetime2>1800000)|(is.na(datetime2)),1,0)]
+data[,session.id:=cumsum(new.session),by=list(userid)]
+
+# Antes del pivot table deberia separar sesiones. Lo hago con una variable userid.session que mergee userid"-"new.session
+data$user.session <- paste(data$userid, data$session.id, sep = " _ ")
+
+# max session per user
+buyers2 <- subset(data, userid %in% buyers$userid)
+checkers2 <- subset(data, userid %in% checkers$userid)
+
+
+# Pivot Table para contar cuantas acciones por sesion
+max.session.by.user.all <- as.data.frame(aggregate(session.id ~ userid, data, max))
+max.session.by.user.buyers <- as.data.frame(aggregate(session.id ~ userid, buyers2, max))
+max.session.by.user.checkers <- as.data.frame(aggregate(session.id ~ userid, checkers2, max))
+
+table.max.session.all <- as.data.frame(table(max.session.by.user.all$session.id))
+table.max.session.buyers <- as.data.frame(table(max.session.by.user.buyers$session.id))
+table.max.session.checkers <- as.data.frame(table(max.session.by.user.checkers$session.id))
+
+
+rm(max.session.by.user.all,max.session.by.user.buyers, max.session.by.user.checkers, table.max.session.all, table.max.session.buyers, table.max.session.checkers)
+
+data <- merge(data, max.session.by.user, by="userid")
+setnames(data, "session.id.y", "max.session")
+setnames(data, "session.id.x", "session.id")
+
+count.flows.by.max.session.all <- dcast(data = data, formula = max.session ~ fl, fun.aggregate = length, value.var = "cc")
+count.flows.by.max.session.buyers <- dcast(data = buyers2, formula = max.session ~ fl, fun.aggregate = length, value.var = "cc")
+count.flows.by.max.session.checkers <- dcast(data = checkers2, formula = max.session ~ fl, fun.aggregate = length, value.var = "cc")
+
+rm(count.flows.by.max.session.all,count.flows.by.max.session.buyers,count.flows.by.max.session.checkers,count.flows.by.session.number.all,count.flows.by.session.number.buyers,count.flows.by.session.number.checkers)
+
+count.flows.by.session.number.all <- dcast(data = data, formula = session.id ~ fl, fun.aggregate = length, value.var = "cc")
+
+count.flows.by.session.number.buyers <- dcast(data = subset(data, comprador==1), formula = session.id ~ fl, fun.aggregate = length, value.var = "cc")
+
+count.flows.by.session.number.checkers <- dcast(data = subset(data, comprador==0), formula = session.id ~ fl, fun.aggregate = length, value.var = "cc")
+
+
+table.session.number.all <- as.data.frame(table(data$session.id))  
+
+table.session.number.buyers <- as.data.frame(table(buyers2$session.id))  
+
+table.session.number.checkers <- as.data.frame(table(checkers2$session.id))  
+
+
+count.filters <- dcast(data = data, formula = user.session ~ eventtype, fun.aggregate = length, value.var = "cc")
+
