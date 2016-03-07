@@ -1,0 +1,87 @@
+setwd("/home/despegar/rstudio_data/vseminario/A pedido")
+
+# Descargar la data
+getReduction("PRODUCT","FLIGHTS",20151215)
+getReduction("PRODUCT","FLIGHTS",20160112)
+getReduction("PRODUCT","FLIGHTS",20151117)
+#getReduction("PRODUCT","FLIGHTS",20160126)
+#getReduction("PRODUCT","FLIGHTS",20151201)
+#getReduction("PRODUCT","FLIGHTS",20151229)
+
+flights1 <- read.delim("/home/despegar/rstudio_data/vseminario/A pedido/20151117-DATA_UPA_PRODUCT_FLIGHTS.txt", sep="\t", header =T)
+flights1 <- subset(flights1[,c(1,2,3,5,6,10,11,12,13,18,19)])
+flights3 <- read.delim("/home/despegar/rstudio_data/vseminario/A pedido/20151215-DATA_UPA_PRODUCT_FLIGHTS.txt", sep="\t", header =T)
+flights3 <- subset(flights3[,c(1,2,3,5,6,10,11,12,13,18,19)])
+flights5 <- read.delim("/home/despegar/rstudio_data/vseminario/A pedido/20160112-DATA_UPA_PRODUCT_FLIGHTS.txt", sep="\t", header =T)
+flights5 <- subset(flights5[,c(1,2,3,5,6,10,11,12,13,18,19)])
+
+flights <- rbind (flights1, flights3, flights5)
+
+save(flights, file="destinos por region.Rda")
+
+rm(flights1, flights3, flights5)
+
+# limpieza de data
+flights$destino_IATA <- as.character(flights$destino_IATA)
+flights$userid <- as.character(flights$userid)
+flights <- subset(flights, nchar(userid) == 36)
+
+flights$flow <- tolower(as.character(flights$flow))
+flights <- subset(flights, flow =="detail" | flow =="search" | flow =="checkout" | flow =="thanks")
+
+# quiero saber la cantidad de usuarios que hizo acciones para cada destino
+count.flows <- dcast(data = flights, formula = userid + destino_IATA ~ flow, fun.aggregate = length, value.var = "country")
+
+count.flows$destino_IATA <- as.character(count.flows$destino_IATA)
+count.flows$userid <- as.character(count.flows$userid)
+
+# saco las ciudades que no vienen con formato de iata de 3 caracteres (saco unos 10k de 300k)
+multidest <- subset(count.flows, nchar(destino_IATA)>3 )
+count.flows <- subset(count.flows, nchar(destino_IATA)==3 )
+
+count.flows <- as.data.frame(count.flows)
+
+# agrego el pais y continente de cada iata
+load("/home/despegar/rstudio_data/vseminario/datos utiles/info iatas.rda")
+
+count.flows <- merge(count.flows, iatas.frame[,c("iataCode", "cont.code")], by.x="destino_IATA", by.y="iataCode")
+
+# cuantas personas buscaron cada iata
+count.searchers <- subset(count.flows, search > 0)
+count.searchers <- count.searchers[, c("userid", "destino_IATA", "cont.code")]
+count.searchers <- as.data.frame(table(count.searchers$destino_IATA))
+setnames(count.searchers, c("iata", "searchers"))
+count.searchers <- merge(count.searchers, iatas.frame[,c("iataCode", "cont.code", "countryIata")], by.x="iata", by.y="iataCode")
+
+write.csv(count.searchers, file="count searches.csv")
+
+# cuantas personas compraron cada iata
+count.buyers <- subset(count.flows, thanks > 0)
+count.buyers <- count.buyers[, c("userid", "destino_IATA", "cont.code")]
+count.buyers <- as.data.frame(table(count.buyers$destino_IATA))
+setnames(count.buyers, c("iata", "buyers"))
+count.buyers <- merge(count.buyers, iatas.frame[,c("iataCode", "cont.code", "countryIata")], by.x="iata", by.y="iataCode")
+
+write.csv(count.buyers, file="count buyers.csv")
+
+
+
+# Mediterraneo
+# Paises que limitan con el Mar Mediterraneo (22):
+# Albania, Argelia, Bosnia y Herzegovina, Chipre, Croacia, Egipto, Eslovenia, España, Francia, Grecia, Israel, 
+#Italia, Líbano, Libia, Malta, Marruecos, Mónaco, Montenegro, Reino Unido (Gibraltar), Siria, Tunez, Turquía, 
+paises.med <- c("AL", "DZ", "BA", "CY", "HR", "EG", "SI", "ES", "FR", "GR", "IL", "IT", "LB", "LY", "MT", "MA", 
+                "MC", "ME", "GI", "TN", "TR")
+count.med <- subset(count.searchers, countryIata %in% paises.med)
+count.med <- count.med[order(-count.med$searchers),]
+
+count.searchers$tag <- "Mediterraneo"
+
+# emiratos arabes
+count.arab <- subset(count.searchers, countryIata == "AE")
+
+# Asia
+count.asia <- subset(count.searchers, cont.code == "AS")
+count.asia <- count.asia[order(-count.asia$searchers),]
+
+count.searchers$tag <- "Mediterraneo"
