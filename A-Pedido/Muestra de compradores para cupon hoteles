@@ -1,0 +1,129 @@
+#### Levanto la data ####  
+
+setwd("/home/despegar/rstudio_data/vseminario/A pedido")
+
+pentaho <- read.table("/home/despegar/rstudio_data/vseminario/A pedido/cupon hoteles.csv", sep=";", header =T, quote = "")
+
+colnames(pentaho) <- c("fecha.cancel","adultos","ninios","infantes","gb", "hid","idproducto","idpais.origen","idpais.destino","idciudad.origen","idciudad.destino",
+                       "ci","co","idcro","rooms","idpais","fechareserva", "tipocliente","email")
+
+pentaho.save <- pentaho
+
+View(head(pentaho,1000))
+
+#hago todas las variables character
+pentaho <- data.frame(lapply(pentaho, as.character), stringsAsFactors=FALSE)
+
+# Grepeo que valores son numericos 
+num.vars <- which(sapply(pentaho[1:10000,], function(x) any(grepl("^[0-9]+$",x))))
+excl <- which(names(pentaho) %in% c("fechareserva", "ci", "co", "email", "fechareserva.sindia"))
+num.vars <- setdiff(num.vars, excl)
+
+for(i in num.vars){
+  pentaho[,i] <- as.numeric(as.character(pentaho[,i]))
+}
+
+# limpio el workspace
+rm(excl, i, num.vars)
+
+# Paso la fecha a formato fecha
+pentaho$fechareserva <- as.character(pentaho$fechareserva)
+pentaho$fechareserva <- strptime(pentaho$fechareserva,format="%Y%m%d")
+
+pentaho$ci <- as.character(pentaho$ci)
+pentaho$ci <- strptime(pentaho$ci,format="%Y%m%d")
+
+pentaho$co <- as.character(pentaho$co)
+pentaho$co <- strptime(pentaho$co,format="%Y%m%d")
+
+#saco los idcro cancelados
+cancelaciones <- subset(pentaho, fecha.cancel!="")
+pentaho <- subset(pentaho, ! (email %in% cancelaciones$email & gb %in% cancelaciones$gb))
+
+# saco compras donde gb es 0 o muy bajo
+pentaho <- subset(pentaho, gb= 0)
+
+#saco algunas compras duplicadas
+pentaho <- pentaho[!duplicated(pentaho[,"idcro"]),]
+
+# sin los mails, no sirve para mandar cupones
+pentaho <- subset(pentaho, email!="")
+
+# me quedo solo con las ventas B2C
+pentaho <- subset(pentaho, tipocliente==6)
+
+#me aseguro de quela fecha de ci sea posterior al 29/12/2015
+pentaho <- subset(pentaho, ci>"2015-12-29 00:00:00")
+
+# id de productos
+id.producto.pentaho <- read.table("/home/despegar/rstudio_data/vseminario/ids pentaho/productos.csv", sep=";", header =T, quote = "")
+
+pentaho <- merge(pentaho, id.producto.pentaho[,c("id_dim_producto","desc_producto")], by.x="idproducto", by.y="id_dim_producto", all.x=T) 
+
+setnames(pentaho, "desc_producto", "producto")
+
+# id de pais
+id.pais.pentaho <- read.table("/home/despegar/rstudio_data/vseminario/ids pentaho/paises.csv", sep=";", header =T, quote = "")
+
+pentaho <- merge(pentaho, id.pais.pentaho[,c("id_dim_pais","cod_pais")], by.x="idpais", by.y="id_dim_pais", all.x=T) 
+setnames(pentaho, "cod_pais", "pais")
+pentaho <- merge(pentaho, id.pais.pentaho[,c("id_dim_pais","cod_pais")], by.x="idpais.origen", by.y="id_dim_pais", all.x=T) 
+setnames(pentaho, "cod_pais", "pais.origen")
+pentaho <- merge(pentaho, id.pais.pentaho[,c("id_dim_pais","cod_pais")], by.x="idpais.destino", by.y="id_dim_pais", all.x=T) 
+setnames(pentaho, "cod_pais", "pais.destino")
+
+rm(id.pais.pentaho, id.producto.pentaho)
+
+pentaho$idpais.destino <- NULL	
+pentaho$idpais.origen <- NULL	
+pentaho$idpais <- NULL	
+pentaho$idproducto <- NULL
+
+# pasajeros
+pentaho$pasajeros <- pentaho$adultos + pentaho$ninios + pentaho$infantes
+
+# domestico o internacional
+pentaho$domestico <- as.numeric(ifelse(pentaho$pais.destino == pentaho$pais.origen, 1, 0))
+
+# Hago una lista de las personas que ya compraron un hotel
+comprahot <- subset(pentaho, producto=="Hoteles")
+comprahot <- comprahot[!duplicated(comprahot[,c("email")]),]
+comprahot <- comprahot[with(comprahot, order(email,fechareserva)),]
+
+# me quedo con los mails de las personas que no compraron hoteles
+solovue <- subset(pentaho, ! email %in% comprahot$email)
+solovue <- solovue[with(solovue, order(email,fechareserva)),]
+
+#me quedo solo con compradores de vuelos (saco paquetes)
+solovue <- subset(solovue, producto=="Vuelos")
+
+# subset de paises
+solovue.BR <- subset(solovue, pais=="BR")
+solovue.MX <- subset(solovue, pais=="MX")
+solovue.AR <- subset(solovue, pais=="AR")
+solovue.CO <- subset(solovue, pais=="CO")
+
+# 5000 por pais
+subset.size <- floor(5000)
+set.seed(1)
+subset.ind <- sample(seq_len(nrow(solovue.BR)), size = subset.size)
+BR.5k <- solovue.BR[subset.ind, ]
+BR.resto <- solovue.BR[-subset.ind, ]
+
+
+
+mails.cupones <- rbind(AR.5k, BR.5k, MX.5k, CO.5k)
+write.csv(mails.cupones, file="mailscupones.csv")
+
+
+
+# Split data para prueba y control
+# separo data en 2 . 50% of the sample size
+# subset.size <- floor(0.5 * nrow(solovue.BR))
+subset.size <- floor(5000)
+
+# set the seed to make your partition reproductible
+set.seed(1)
+subset.ind <- sample(seq_len(nrow(solovue.AR)), size = subset.size)
+solovue.AR.5k <- solovue.BR[subset.ind, ]
+solovue.AR.control <- solovue.BR[-subset.ind, ]
